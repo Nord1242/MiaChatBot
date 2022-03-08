@@ -1,5 +1,4 @@
-import psycopg2
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, Router
 from aiogram.dispatcher.fsm.storage.memory import MemoryStorage
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from sqlalchemy import create_engine
@@ -10,8 +9,7 @@ from sqlalchemy_utils import database_exists, create_database
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
-
-engine = create_engine(CONNECT_TO_DB, echo=True, )
+engine = create_engine(CONNECT_TO_DB, echo=False, )
 if not database_exists(engine.url):
     create_database(engine.url)
 engine.connect()
