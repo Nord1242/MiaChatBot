@@ -1,6 +1,5 @@
-from aiogram import Bot, Dispatcher, Router
+from aiogram import Bot, Dispatcher
 from aiogram.dispatcher.fsm.storage.memory import MemoryStorage
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from sqlalchemy import create_engine
 from data.config import BOT_TOKEN, CONNECT_TO_DB
 from sqlalchemy.orm import sessionmaker

@@ -14,10 +14,10 @@ def get_dialog_keyboard():
     level = 0
     markup.add(
         InlineKeyboardButton(
-            text="Найти собеседника",
+            text="🔎 Найти собеседника",
             callback_data=Dialog(choice="create_dialog", level=level + 2).pack()),
         InlineKeyboardButton(
-            text="Присоединиться к диалогу",
+            text="💬 Присоединиться к диалогу",
             callback_data=Dialog(choice="join_in_dialog", level=level + 1).pack())
     )
     markup.adjust(1, repeat=True)
@@ -37,7 +37,7 @@ def cancel_dialog(user_id):
     return markup.as_markup(resize_keyboard=True)
 
 
-def gef_return_in_menu():
+def get_return_in_menu_keyboard():
     level = 3
     markup = InlineKeyboardBuilder()
     markup.add(

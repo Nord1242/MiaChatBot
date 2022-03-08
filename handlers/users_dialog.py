@@ -6,11 +6,10 @@ from aiogram import types, Bot
 from aiogram.dispatcher.fsm.storage.base import BaseStorage, StorageKey
 from states.dialog_state import DialogState
 from keyboards.inline.dialog_keyboard import get_dialog_keyboard, Dialog, cancel_dialog, get_theme_keyboard, \
-    gef_return_in_menu
+    get_return_in_menu_keyboard
 from aiogram import F
 from models.models import ThemeTable
 from typing import Union
-from middlewares import DialogMiddleware
 
 PATTERN_RE = r"\w+:\w+"
 
@@ -54,13 +53,13 @@ async def check_dialog_theme(call: types.CallbackQuery, state: FSMContext, **kwa
 async def get_dialog_name(call: types.CallbackQuery, state: FSMContext, **kwargs):
     await state.set_state(DialogState.write_theme)
     await state.update_data(menu_id=call.message.message_id)
-    return_keyboard = gef_return_in_menu()
+    return_keyboard = get_return_in_menu_keyboard()
     await call.message.edit_text(f'Введите название темы', reply_markup=return_keyboard)
 
 
 async def cancel_user_dialog(call: types.CallbackQuery, state: FSMContext, callback_data: Dialog, bot: Bot,
                              fsm_storage: BaseStorage):
-    return_keyboard = gef_return_in_menu()
+    return_keyboard = get_return_in_menu_keyboard()
     state_waiting_user = re.search(PATTERN_RE, str(DialogState.waiting_user)).group()
     if await state.get_state() == state_waiting_user:
         cancel_message_id = await call.message.edit_text('Вы отменили поиск', reply_markup=return_keyboard)
@@ -72,8 +71,9 @@ async def cancel_user_dialog(call: types.CallbackQuery, state: FSMContext, callb
         companion = user_data['companion_id']
         companion_data = await fsm_storage.get_data(bot=bot,
                                                     key=StorageKey(user_id=companion, chat_id=companion, bot_id=bot.id))
-        await call.message.edit_text('Вы завершили диалог', reply_markup=return_keyboard)
+        await call.message.delete()
         await bot.delete_message(message_id=companion_data['menu_id'], chat_id=companion)
+        await call.message.answer('Вы завершили диалог', reply_markup=return_keyboard)
         await bot.send_message(text='Собеседник завершил диалог', reply_markup=return_keyboard, chat_id=companion)
 
         await state.clear()
@@ -111,8 +111,8 @@ async def create_dialog(message: types.Message, state: FSMContext, bot: Bot):
 
 
 @dp.callback_query(Dialog.filter(F.choice == Choice.IN_DIALOG))
-async def dialog(call: types.CallbackQuery, fsm_storage: BaseStorage, callback_data: Dialog, bot: Bot,
-                 state: FSMContext):
+async def join_in_dialog(call: types.CallbackQuery, fsm_storage: BaseStorage, callback_data: Dialog, bot: Bot,
+                         state: FSMContext):
     companion = callback_data.dict().get('user_id')
     user_id = call.from_user.id
     await state.update_data(companion_id=companion)
@@ -129,22 +129,36 @@ async def dialog(call: types.CallbackQuery, fsm_storage: BaseStorage, callback_d
     await fsm_storage.update_data(bot=bot, key=StorageKey(**storage_kwargs['storage_key']),
                                   data={'companion_id': call.from_user.id})
     state_wait = re.search(PATTERN_RE, str(DialogState.waiting_user)).group()
-    if companion_state != str(state_wait):
-        await call.message.edit_text("Пользователь уже нашел собеседника или отменил тему ")
+    if companion == user_id:
+        user_data = await state.get_data()
+        await call.answer(text='Вы не можете выбрать свою тему!', show_alert=True)
+        await state.set_state(DialogState.waiting_user)
+        await state.update_data(**user_data)
+    elif companion_state != str(state_wait):
+        keyboard = get_return_in_menu_keyboard()
+        await call.message.edit_text("Пользователь уже нашел собеседника или отменил тему", reply_markup=keyboard)
         return
-    session.query(ThemeTable).filter(ThemeTable.telegram_user_id == companion).delete()
-    session.commit()
-    await state.set_state(DialogState.in_dialog)
-    await fsm_storage.set_state(bot=bot, key=StorageKey(**storage_kwargs['storage_key']),
-                                state=storage_kwargs['state_in_dialog'])
-    companion_keyboard = cancel_dialog(user_id=companion)
-    keyboard = cancel_dialog(user_id=user_id)
-    menu_id = await call.message.edit_text(text='Вы зашли в диалог! Чтобы выйти из него то нажмите кнопку ниже',
-                                           reply_markup=keyboard)
-    await state.update_data(menu_id=menu_id.message_id)
-    await bot.delete_message(chat_id=companion, message_id=companion_data['menu_id'])
-    menu_id = await bot.send_message(chat_id=companion, text='Пользователь найден',
-                                     reply_markup=companion_keyboard)
-    await fsm_storage.update_data(bot=bot, key=StorageKey(user_id=companion, chat_id=companion, bot_id=bot.id), data={
-        'menu_id': menu_id.message_id
-    })
+    else:
+        session.query(ThemeTable).filter(ThemeTable.telegram_user_id == companion).delete()
+        session.commit()
+        await state.set_state(DialogState.in_dialog)
+        await fsm_storage.set_state(bot=bot, key=StorageKey(**storage_kwargs['storage_key']),
+                                    state=storage_kwargs['state_in_dialog'])
+        companion_keyboard = cancel_dialog(user_id=companion)
+        keyboard = cancel_dialog(user_id=user_id)
+        menu_id = await call.message.edit_text(text='Вы зашли в диалог! Чтобы выйти из него то нажмите кнопку ниже',
+                                               reply_markup=keyboard)
+        await state.update_data(menu_id=menu_id.message_id)
+        await bot.delete_message(chat_id=companion, message_id=companion_data['menu_id'])
+        menu_id = await bot.send_message(chat_id=companion, text='Пользователь найден',
+                                         reply_markup=companion_keyboard)
+        await fsm_storage.update_data(bot=bot, key=StorageKey(user_id=companion, chat_id=companion, bot_id=bot.id), data={
+            'menu_id': menu_id.message_id
+        })
+
+
+@dp.message(DialogState.in_dialog)
+async def dialog(message: types.Message, state: FSMContext):
+    user_data = await state.get_data()
+    companion_id = user_data['companion_id']
+    await message.copy_to(chat_id=companion_id)
