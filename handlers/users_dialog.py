@@ -23,19 +23,25 @@ class Choice(str):
 
 
 @dp.message(commands={'start'})
-async def start_dialog(message: types.Message, state: FSMContext):
-    await main_dialog_menu(message=message, state=state)
+async def start_dialog(message: types.Message, state: FSMContext, bot: Bot):
+    await main_dialog_menu(message=message, state=state, bot=bot)
 
 
-async def main_dialog_menu(message: Union[types.Message, types.CallbackQuery], state: FSMContext, **kwargs):
+async def main_dialog_menu(message: Union[types.Message, types.CallbackQuery], state: FSMContext, bot: Bot, **kwargs):
     text = "Выберите кноку ниже"
     keyboard = get_dialog_keyboard()
     if isinstance(message, types.Message):
         await message.answer(text, reply_markup=keyboard)
     elif isinstance(message, types.CallbackQuery):
         call = message
+        user_data = await state.get_data()
+        try:
+            cancel_message_id = user_data['cancel_message_id']
+            await bot.delete_message(message_id=cancel_message_id, chat_id=call.from_user.id)
+            await bot.send_message(text=text, reply_markup=keyboard, chat_id=call.from_user.id)
+        except KeyError:
+            await call.message.edit_text(text=text, reply_markup=keyboard)
         await state.clear()
-        await call.message.edit_text(text=text, reply_markup=keyboard)
 
 
 async def check_dialog_theme(call: types.CallbackQuery, state: FSMContext, **kwargs):
@@ -55,21 +61,21 @@ async def get_dialog_name(call: types.CallbackQuery, state: FSMContext, **kwargs
 async def cancel_user_dialog(call: types.CallbackQuery, state: FSMContext, callback_data: Dialog, bot: Bot,
                              fsm_storage: BaseStorage):
     return_keyboard = gef_return_in_menu()
-    user_data = await state.get_data()
     state_waiting_user = re.search(PATTERN_RE, str(DialogState.waiting_user)).group()
     if await state.get_state() == state_waiting_user:
-        await call.message.edit_text('Вы отменили поиск', reply_markup=return_keyboard)
+        cancel_message_id = await call.message.edit_text('Вы отменили поиск', reply_markup=return_keyboard)
+        await state.update_data(cancel_message_id=cancel_message_id.message_id)
         session.query(ThemeTable).filter(ThemeTable.telegram_user_id == call.from_user.id).delete()
         session.commit()
     else:
+        user_data = await state.get_data()
         companion = user_data['companion_id']
         companion_data = await fsm_storage.get_data(bot=bot,
                                                     key=StorageKey(user_id=companion, chat_id=companion, bot_id=bot.id))
-        await fsm_storage.set_state(bot=bot, key=StorageKey(chat_id=companion, user_id=companion, bot_id=bot.id),
-                                    state=None)
         await call.message.edit_text('Вы завершили диалог', reply_markup=return_keyboard)
-        await bot.delete_message(chat_id=companion, message_id=companion_data['menu_id'])
+        await bot.delete_message(message_id=companion_data['menu_id'], chat_id=companion)
         await bot.send_message(text='Собеседник завершил диалог', reply_markup=return_keyboard, chat_id=companion)
+
         await state.clear()
         await fsm_storage.set_state(bot=bot, key=StorageKey(chat_id=companion, user_id=companion, bot_id=bot.id),
                                     state=None)
@@ -108,7 +114,6 @@ async def create_dialog(message: types.Message, state: FSMContext, bot: Bot):
 async def dialog(call: types.CallbackQuery, fsm_storage: BaseStorage, callback_data: Dialog, bot: Bot,
                  state: FSMContext):
     companion = callback_data.dict().get('user_id')
-    user_data = await state.get_data()
     user_id = call.from_user.id
     await state.update_data(companion_id=companion)
     storage_kwargs = {
@@ -121,6 +126,8 @@ async def dialog(call: types.CallbackQuery, fsm_storage: BaseStorage, callback_d
     }
     companion_state = await fsm_storage.get_state(bot=bot, key=StorageKey(**storage_kwargs['storage_key']))
     companion_data = await fsm_storage.get_data(bot=bot, key=StorageKey(**storage_kwargs['storage_key']))
+    await fsm_storage.update_data(bot=bot, key=StorageKey(**storage_kwargs['storage_key']),
+                                  data={'companion_id': call.from_user.id})
     state_wait = re.search(PATTERN_RE, str(DialogState.waiting_user)).group()
     if companion_state != str(state_wait):
         await call.message.edit_text("Пользователь уже нашел собеседника или отменил тему ")
@@ -132,7 +139,12 @@ async def dialog(call: types.CallbackQuery, fsm_storage: BaseStorage, callback_d
                                 state=storage_kwargs['state_in_dialog'])
     companion_keyboard = cancel_dialog(user_id=companion)
     keyboard = cancel_dialog(user_id=user_id)
-    await call.message.edit_text(text='Вы зашли в диалог! Чтобы выйти из него то нажмите кнопку ниже',
-                                 reply_markup=keyboard)
+    menu_id = await call.message.edit_text(text='Вы зашли в диалог! Чтобы выйти из него то нажмите кнопку ниже',
+                                           reply_markup=keyboard)
+    await state.update_data(menu_id=menu_id.message_id)
     await bot.delete_message(chat_id=companion, message_id=companion_data['menu_id'])
-    await bot.send_message(chat_id=companion, text='Пользователь найден', reply_markup=companion_keyboard)
+    menu_id = await bot.send_message(chat_id=companion, text='Пользователь найден',
+                                     reply_markup=companion_keyboard)
+    await fsm_storage.update_data(bot=bot, key=StorageKey(user_id=companion, chat_id=companion, bot_id=bot.id), data={
+        'menu_id': menu_id.message_id
+    })

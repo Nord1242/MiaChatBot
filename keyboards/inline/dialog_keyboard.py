@@ -30,7 +30,7 @@ def cancel_dialog(user_id):
     markup.add(
         InlineKeyboardButton(
             text="Отменить",
-            callback_data=Dialog(status="cancel_dialog", user_id=user_id, level=level+1).pack()
+            callback_data=Dialog(status="cancel_dialog", level=level+1, user_id=user_id).pack()
         )
     )
     markup.adjust(1, repeat=True)

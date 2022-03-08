@@ -21,7 +21,7 @@ class DialogMiddleware(BaseMiddleware):
             data: Dict[str, Any]):
         # pattern = r"\w+:\w+"
         user_id = event.from_user.id
-        print(f'В мидл вари сейчас {user_id}')
+        print(f'В миддлвари сейчас {user_id}')
         bot = data['bot']
         fsm_storage = data['fsm_storage']
         state = data['state']
@@ -32,9 +32,7 @@ class DialogMiddleware(BaseMiddleware):
             companion_state = await fsm_storage.get_state(bot=bot, key=StorageKey(user_id=companion, chat_id=companion,
                                                                                   bot_id=bot.id))
             print(f'state_user: {state_user}\ncompanion_state: {companion_state}')
+            # if companion_state == state_user:
+            #     await event.copy_to(companion)
         except KeyError:
-            pass
-        # re.search(pattern, str(DialogState.in_dialog)).group()
-        # if companion_state == state_user:
-        #     await event.copy_to(companion)
-        return await handler(event, data)
+            return await handler(event, data)
