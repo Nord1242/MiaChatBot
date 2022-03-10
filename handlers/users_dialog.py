@@ -21,7 +21,7 @@ class Choice(str):
     IN_DIALOG = "in_dialog"
 
 
-@dp.message(commands={'start'})
+@dp.message(commands={'dialog'})
 async def start_dialog(message: types.Message, state: FSMContext, bot: Bot):
     await main_dialog_menu(message=message, state=state, bot=bot)
 
