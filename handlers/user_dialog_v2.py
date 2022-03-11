@@ -3,9 +3,11 @@ from loader import dp, bot
 from aiogram import types
 from aiogram_dialog import DialogManager, StartMode, Dialog
 from aiogram_dialog.widgets.text import Const
+from aiogram_dialog.widgets.kbd import Button
 from states.dialog_state import DialogState
 from models.models import ThemeTable
 from loader import session
+from typing import Any
 from aiogram_dialog.widgets.kbd import Select
 
 
@@ -30,17 +32,19 @@ async def delete_theme(call: types.CallbackQuery, button: Button, manager: Dialo
     session.commit()
 
 
-async def suggested_themes():
+async def suggested_themes(**kwargs):
     all_themes = ThemeTable.get_all_theme()
     random.shuffle(all_themes)
-    themes_button = list()
+    themes_buttons = list()
     for theme in all_themes:
-        themes_button.append(
-            Select(
-                Const(f"{theme.theme_name}"),
-                id=theme.telegram_user_id
-            )
+        themes_buttons.append(
+            (theme.theme_name,
+             theme.telegram_user_id)
         )
-    return themes_button
+    return {
+        "themes_buttons": themes_buttons
+    }
 
 
+async def on_user_theme(call: types.CallbackQuery, widget: Any, manager: DialogManager, theme_id: str):
+    print(f"Выбран диалог {theme_id}")

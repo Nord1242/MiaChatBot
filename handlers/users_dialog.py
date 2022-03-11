@@ -7,7 +7,6 @@ from aiogram.dispatcher.fsm.storage.base import BaseStorage, StorageKey
 from states.dialog_state import DialogState
 from keyboards.inline.dialog_keyboard import get_dialog_keyboard, Dialog, cancel_dialog, get_theme_keyboard, \
     get_return_in_menu_keyboard
-from aiogram import F
 from models.models import ThemeTable
 from typing import Union
 
