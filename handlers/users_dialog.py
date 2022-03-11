@@ -28,7 +28,7 @@ async def start_dialog(message: types.Message, state: FSMContext, bot: Bot):
 async def main_dialog_menu(message: Union[types.Message, types.CallbackQuery], state: FSMContext, bot: Bot, **kwargs):
     text = "Выберите кноку ниже"
     keyboard = get_dialog_keyboard()
-    if isinstance(message, types.Message):
+    if isinstance(message, types.Message):s
         await message.answer(text, reply_markup=keyboard)
     elif isinstance(message, types.CallbackQuery):
         call = message

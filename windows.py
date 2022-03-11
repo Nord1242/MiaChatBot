@@ -1,13 +1,11 @@
 from states.dialog_state import DialogState
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram_dialog import Dialog, DialogManager, Window
-from aiogram_dialog.widgets.kbd import Button, Group, Row, SwitchTo, Back, Next, Select
+from aiogram_dialog.widgets.kbd import Button, Group, Row, SwitchTo, Back, Next, Select, ScrollingGroup
 from aiogram_dialog.widgets.text import Const, Format
 from aiogram_dialog.widgets.input import MessageInput
-from handlers.user_dialog_v2 import create_dialog, delete_theme, on_user_theme, suggested_themes
+from handlers.user_dialog_v2 import create_dialog, cancel_search, join_in_dialog, suggested_themes
 import operator
-
-
 
 dialog_window = Dialog(
     Window(
@@ -35,25 +33,23 @@ dialog_window = Dialog(
     ),
     Window(
         Const("Ожидайте пользователя"),
-        SwitchTo(Const("Отменить поиск"), id="cancel", state=DialogState.dialog_menu, on_click=delete_theme),
+        SwitchTo(Const("Отменить поиск"), id="cancel", state=DialogState.dialog_menu, on_click=cancel_search),
         state=DialogState.waiting_user
     ),
     Window(
         Const("Выберите тему ниже"),
-        Select(
-            Format("{item[0]}"),
-            id="users_themes",
-            item_id_getter=operator.itemgetter(1),
-            items="themes_buttons",
-            on_click=on_user_theme,
-        ),
+        ScrollingGroup(
+            Select(
+                Format("{item[0]}"),
+                id="users_themes",
+                item_id_getter=operator.itemgetter(1),
+                items="themes_buttons",
+                on_click=join_in_dialog,
+            ),),
+
+        SwitchTo(Const("Вернуться в меню диалогов"), id="return_in_dialog_menu", state=DialogState.dialog_menu),
         getter=suggested_themes,
         state=DialogState.search_theme
-
-
-
-
-
     )
 
 )
