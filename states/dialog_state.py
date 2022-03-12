@@ -1,7 +1,7 @@
 from aiogram.dispatcher.fsm.state import StatesGroup, State
 
 
-class DialogState(StatesGroup):
+class AllStates(StatesGroup):
     main_menu = State()
     dialog_menu = State()
     search_theme = State()

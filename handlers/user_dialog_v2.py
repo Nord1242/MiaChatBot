@@ -1,7 +1,7 @@
 from aiogram.dispatcher.fsm.storage.base import BaseStorage, StorageKey
 from aiogram_dialog import DialogManager, StartMode, Dialog
 from aiogram_dialog.widgets.kbd import Button
-from states.dialog_state import DialogState
+from states.dialog_state import AllStates
 from models.models import ThemeTable
 from loader import dp, bot
 from loader import session
@@ -12,7 +12,11 @@ import random
 
 @dp.message(commands={'start'})
 async def test_handler(message: types.Message, dialog_manager: DialogManager):
-    await dialog_manager.start(DialogState.main_menu, mode=StartMode.RESET_STACK)
+    await dialog_manager.start(AllStates.main_menu, mode=StartMode.RESET_STACK)
+
+
+async def get_user_id(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager):
+    dialog_manager.current_context().dialog_data.update(user_id=call.from_user.id)
 
 
 async def create_dialog(message: types.Message, dialog: Dialog, dialog_manager: DialogManager):
@@ -45,19 +49,39 @@ async def suggested_themes(**kwargs):
     }
 
 
-async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, theme_id: str,
-                         fsm_context: BaseStorage):
-    session.query(ThemeTable).filter(ThemeTable.telegram_user_id == call.from_user.id).delete()
-    session.commit()
+async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, theme_id: str):
     companion = int(theme_id)
     user_id = call.from_user.id
-    dialog_manager.current_context().dialog_data["companion_id"] = companion
-    storage_kwargs = {
-        'storage_key': {
-            'user_id': companion,
-            'chat_id': companion,
-            'bot_id': bot.id},
-        'state_none': None,
-        'state_in_dialog': DialogState.in_dialog
-    }
-    print(fsm_context.set_state(bot=bot, key=StorageKey(**storage_kwargs['storage_key']), state=DialogState.in_dialog))
+    session.query(ThemeTable).filter(ThemeTable.telegram_user_id == companion).delete()
+    session.commit()
+    companion_manager = dialog_manager.bg(user_id=companion, chat_id=companion)
+    await companion_manager.update(data={'companion_id': user_id})
+    dialog_manager.current_context().dialog_data.update(companion_id=companion)
+    await companion_manager.start(AllStates.in_dialog)
+    await dialog_manager.dialog().switch_to(state=AllStates.in_dialog)
+
+
+async def get_text_for_window(dialog_manager: DialogManager, **kwargs):
+    user_id = dialog_manager.current_context().dialog_data.get('user_id')
+    companion_id = dialog_manager.current_context().dialog_data.get('companion_id')
+    if user_id == companion_id:
+        return {"text": "Пользователь найден"}
+    else:
+        return {"text": "Добро пожаловать в чат"}
+
+
+async def cancel_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager):
+    dialog_manager.current_context().dialog_data.update(user_id=call.from_user.id)
+    companion_id = dialog_manager.current_context().dialog_data.get("companion_id")
+    print(dialog_manager.current_context().dialog_data)
+    # print(f"{call.from_user.id}\ncompanion_id: {companion_id}")
+    # await dialog_manager.bg(chat_id=companion_id, user_id=companion_id, load=True).start(AllStates.cancel)
+    # await dialog_manager.dialog().next()
+
+# async def who_cancel_dialog(dialog_manager: DialogManager, **kwargs):
+#     user_id = dialog_manager.current_context().dialog_data.get('user_id')
+#     companion_id = dialog_manager.current_context().dialog_data.get('companion_id')
+#     if user_id == companion_id:
+#         return {"text": "Пользователь завершли чат"}
+#     else:
+#         return {"text": "Вы завершили чат"}

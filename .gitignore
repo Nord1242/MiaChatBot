@@ -129,5 +129,5 @@ dmypy.json
 .pyre/
 
 probe.py
-new_file
+new_file.db
 mia_venv
