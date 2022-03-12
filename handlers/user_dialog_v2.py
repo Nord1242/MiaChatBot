@@ -61,7 +61,7 @@ async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager:
     await dialog_manager.dialog().switch_to(state=AllStates.in_dialog)
 
 
-async def get_text_for_window(dialog_manager: DialogManager, **kwargs):
+async def text_join_in_dialog(dialog_manager: DialogManager, **kwargs):
     user_id = dialog_manager.current_context().dialog_data.get('user_id')
     companion_id = dialog_manager.current_context().dialog_data.get('companion_id')
     if user_id == companion_id:
