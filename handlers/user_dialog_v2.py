@@ -49,14 +49,14 @@ async def suggested_themes(**kwargs):
     }
 
 
-async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, theme_id: str):
-    companion = int(theme_id)
+async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, companion_id: str):
+    companion_id = int(companion_id)
     user_id = call.from_user.id
-    session.query(ThemeTable).filter(ThemeTable.telegram_user_id == companion).delete()
+    session.query(ThemeTable).filter(ThemeTable.telegram_user_id == companion_id).delete()
     session.commit()
-    companion_manager = dialog_manager.bg(user_id=companion, chat_id=companion)
+    companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
     await companion_manager.update(data={'companion_id': user_id})
-    dialog_manager.current_context().dialog_data.update(companion_id=companion)
+    dialog_manager.current_context().dialog_data.update(companion_id=companion_id)
     await companion_manager.start(AllStates.in_dialog)
     await dialog_manager.dialog().switch_to(state=AllStates.in_dialog)
 
