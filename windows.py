@@ -4,7 +4,7 @@ from aiogram_dialog.widgets.kbd import Button, Group, Row, SwitchTo, Back, Next,
 from aiogram_dialog.widgets.text import Const, Format, Case
 from aiogram_dialog.widgets.input import MessageInput
 from handlers.user_dialog_v2 import create_dialog, cancel_search, join_in_dialog, suggested_themes, \
-    text_join_in_dialog, cancel_dialog, get_user_id
+    text_join_in_dialog, cancel_dialog, get_user_id, who_cancel_dialog, dialog
 import operator
 
 dialog_window = Dialog(
@@ -51,16 +51,17 @@ dialog_window = Dialog(
     ),
     Window(
         Format("{text}"),
+        MessageInput(dialog),
         SwitchTo(Const("Завершить диалог"), id="cancel_dialog", state=AllStates.cancel, on_click=cancel_dialog),
         state=AllStates.in_dialog,
         getter=text_join_in_dialog
 
     ),
     Window(
-        Format("SS"),
+        Format("{text}"),
         SwitchTo(Const("Вернуться в меню диалогов"), id="return_in_dialog_menu", state=AllStates.dialog_menu),
         state=AllStates.cancel,
-        # getter=who_cancel_dialog
+        getter=who_cancel_dialog
     )
 
 )

@@ -1,5 +1,6 @@
 from aiogram.dispatcher.fsm.storage.base import BaseStorage, StorageKey
 from aiogram_dialog import DialogManager, StartMode, Dialog
+from aiogram_dialog.manager.protocols import ShowMode
 from aiogram_dialog.widgets.kbd import Button
 from states.dialog_state import AllStates
 from models.models import ThemeTable
@@ -12,6 +13,9 @@ import random
 
 @dp.message(commands={'start'})
 async def test_handler(message: types.Message, dialog_manager: DialogManager):
+    last_message_id = dialog_manager.current_stack().last_message_id
+    if last_message_id:
+        await bot.delete_message(chat_id=message.from_user.id, message_id=last_message_id)
     await dialog_manager.start(AllStates.main_menu, mode=StartMode.RESET_STACK)
 
 
@@ -50,38 +54,39 @@ async def suggested_themes(**kwargs):
 
 
 async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, companion_id: str):
-    companion_id = int(companion_id)
     user_id = call.from_user.id
+    companion_id = int(companion_id)
     session.query(ThemeTable).filter(ThemeTable.telegram_user_id == companion_id).delete()
     session.commit()
     companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
-    await companion_manager.update(data={'companion_id': user_id})
-    dialog_manager.current_context().dialog_data.update(companion_id=companion_id)
-    await companion_manager.start(AllStates.in_dialog)
-    await dialog_manager.dialog().switch_to(state=AllStates.in_dialog)
+    await companion_manager.start(AllStates.in_dialog, mode=StartMode.NORMAL,
+                                  data={'companion_id': user_id, "text": "Пользователь найден!"})
+    await dialog_manager.start(AllStates.in_dialog, mode=StartMode.NORMAL,
+                               data={"companion_id": companion_id, "text": "Добро пожаловать в чат!"})
 
 
 async def text_join_in_dialog(dialog_manager: DialogManager, **kwargs):
-    user_id = dialog_manager.current_context().dialog_data.get('user_id')
-    companion_id = dialog_manager.current_context().dialog_data.get('companion_id')
-    if user_id == companion_id:
-        return {"text": "Пользователь найден"}
-    else:
-        return {"text": "Добро пожаловать в чат"}
+    text = dialog_manager.current_context().start_data.get('text')
+    return {"text": text}
 
 
 async def cancel_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager):
-    dialog_manager.current_context().dialog_data.update(user_id=call.from_user.id)
-    companion_id = dialog_manager.current_context().dialog_data.get("companion_id")
-    print(dialog_manager.current_context().dialog_data)
-    # print(f"{call.from_user.id}\ncompanion_id: {companion_id}")
-    # await dialog_manager.bg(chat_id=companion_id, user_id=companion_id, load=True).start(AllStates.cancel)
-    # await dialog_manager.dialog().next()
+    companion_id = dialog_manager.current_context().start_data.get("companion_id")
+    companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
+    await dialog_manager.start(AllStates.cancel, mode=StartMode.NORMAL, data={"text": "Вы завершили диалог"})
+    await companion_manager.start(AllStates.cancel, mode=StartMode.NORMAL, data={"text": "Собеседник зввершил диалог"})
 
-# async def who_cancel_dialog(dialog_manager: DialogManager, **kwargs):
-#     user_id = dialog_manager.current_context().dialog_data.get('user_id')
-#     companion_id = dialog_manager.current_context().dialog_data.get('companion_id')
-#     if user_id == companion_id:
-#         return {"text": "Пользователь завершли чат"}
-#     else:
-#         return {"text": "Вы завершили чат"}
+
+async def who_cancel_dialog(dialog_manager: DialogManager, **kwargs):
+    text = dialog_manager.current_context().start_data.get('text')
+    return {"text": text}
+
+
+async def dialog(message: types.Message, dialog: Dialog, dialog_manager: DialogManager):
+    companion_id = dialog_manager.current_context().start_data.get("companion_id")
+    dialog_manager.show_mode = ShowMode.EDIT
+    await message.copy_to(chat_id=companion_id)
+
+
+async def restart_dialog_menu(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager):
+    await dialog_manager.start(AllStates.cancel, mode=StartMode.RESET_STACK)
