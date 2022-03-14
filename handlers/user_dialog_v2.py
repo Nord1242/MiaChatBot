@@ -3,7 +3,7 @@ from aiogram_dialog import DialogManager, StartMode, Dialog
 from aiogram_dialog.manager.protocols import ShowMode
 from aiogram_dialog.widgets.kbd import Button
 from states.dialog_state import AllStates
-from models.models import ThemeTable
+from database.models import ThemeTable
 from loader import dp, bot
 from loader import session
 from aiogram import types
@@ -40,8 +40,7 @@ async def cancel_search(call: types.CallbackQuery, button: Button, manager: Dial
 
 
 async def suggested_themes(**kwargs):
-    all_themes = ThemeTable.get_all_theme()
-    random.shuffle(all_themes)
+    all_themes = []
     themes_buttons = list()
     for theme in all_themes:
         themes_buttons.append(
