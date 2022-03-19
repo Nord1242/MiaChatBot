@@ -1,10 +1,10 @@
-# from keyboards.inline.dialog_keyboard import Dialog
-# from .dialog_middleware import DialogMiddleware
-# # from .storage_kwargs import StorageKwargs
-# from aiogram.dispatcher.fsm.storage.base import BaseStorage
-# from loader import dp, bot
-#
-#
-# def setup_middleware():
-#     dp.callback_query.middleware(DialogMiddleware())
-#     # dp.message.middleware(StorageKwargs())
+from .start_connection import GetConnectionToDB
+from .repository import Repository
+
+from loader import dp, async_sessionmaker
+from sqlalchemy.orm import sessionmaker
+
+
+def setup_middleware(sm: sessionmaker):
+    dp.update.middleware(GetConnectionToDB(sm))
+    dp.update.middleware(Repository())

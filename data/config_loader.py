@@ -2,9 +2,6 @@ from dataclasses import dataclass
 from environs import Env
 
 
-# BOT_TOKEN = env.str("BOT_TOKEN")
-# CONNECT_TO_DB = env.str("CONNECT_TO_DB")
-
 @dataclass
 class Bot:
     token: str
@@ -19,9 +16,15 @@ class DB:
 
 
 @dataclass
+class Redis:
+    host: str
+
+
+@dataclass
 class Config:
     bot: Bot
     db: DB
+    redis: Redis
 
 
 def load_config():
@@ -34,5 +37,8 @@ def load_config():
             db_name=env.str("DB_NAME"),
             user=env.str("DB_USER"),
             password=env.str("DB_PASS")
+        ),
+        redis=Redis(
+            host=env.str("REDIS_HOST")
         )
     )

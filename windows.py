@@ -3,13 +3,16 @@ from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.widgets.kbd import Button, Group, Row, SwitchTo, Back, Next, Select, ScrollingGroup
 from aiogram_dialog.widgets.text import Const, Format, Case
 from aiogram_dialog.widgets.input import MessageInput
-from handlers.user_dialog_v2 import create_dialog, cancel_search, join_in_dialog, suggested_themes, \
-    text_join_in_dialog, cancel_dialog, get_user_id, who_cancel_dialog, dialog
+from handlers.user_dialog import create_dialog, cancel_search, join_in_dialog, suggested_themes, \
+    text_join_in_dialog, cancel_dialog, get_user_id, who_cancel_dialog, dialog, return_menu
+from handlers.random_user import search_random_user
 import operator
 
 dialog_window = Dialog(
     Window(
         Const("Вы в главном меню"),
+        SwitchTo(Const('Найти случайного собеседника'), id="random_user", on_click=search_random_user,
+                 state=AllStates.waiting_user),
         SwitchTo(Const('Меню диалогов'), id="dialog_menu", state=AllStates.dialog_menu, on_click=get_user_id),
         state=AllStates.main_menu,
     ),
@@ -32,8 +35,8 @@ dialog_window = Dialog(
         preview_add_transitions=[Next()],
     ),
     Window(
-        Const("Ожидайте пользователя"),
-        SwitchTo(Const("Отменить поиск"), id="cancel", state=AllStates.dialog_menu, on_click=cancel_search),
+        Const("Ожидайте собеседника"),
+        Button(Const("Отменить поиск"), id="cancel", on_click=cancel_search),
         state=AllStates.waiting_user
     ),
     Window(
@@ -52,14 +55,14 @@ dialog_window = Dialog(
     Window(
         Format("{text}"),
         MessageInput(dialog),
-        SwitchTo(Const("Завершить диалог"), id="cancel_dialog", state=AllStates.cancel, on_click=cancel_dialog),
+        Button(Const("Завершить диалог"), id="cancel_dialog", on_click=cancel_dialog),
         state=AllStates.in_dialog,
         getter=text_join_in_dialog
 
     ),
     Window(
         Format("{text}"),
-        SwitchTo(Const("Вернуться в меню диалогов"), id="return_in_dialog_menu", state=AllStates.dialog_menu),
+        Button(Format("{button}"), id="return_in_dialog_menu", on_click=return_menu),
         state=AllStates.cancel,
         getter=who_cancel_dialog
     )
