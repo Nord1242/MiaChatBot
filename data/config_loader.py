@@ -21,10 +21,16 @@ class Redis:
 
 
 @dataclass
+class PAY:
+    token: str
+
+
+@dataclass
 class Config:
     bot: Bot
     db: DB
     redis: Redis
+    pay: PAY
 
 
 def load_config():
@@ -40,5 +46,8 @@ def load_config():
         ),
         redis=Redis(
             host=env.str("REDIS_HOST")
+        ),
+        pay=PAY(
+            token=env.str("YOOTOKEN")
         )
     )

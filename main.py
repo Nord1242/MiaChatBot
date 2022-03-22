@@ -1,9 +1,7 @@
 import asyncio
-from database.models import ThemeTable
 from loader import bot, registry, engine, async_sessionmaker
 from handlers import dp
 from windows import dialog_window
-from sqlalchemy_utils import database_exists, create_database
 from database.base import Base
 from middlewares import setup_middleware
 

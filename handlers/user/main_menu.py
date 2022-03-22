@@ -1,6 +1,6 @@
 from aiogram_dialog import DialogManager, StartMode
 from loader import dp, bot
-from states.dialog_state import AllStates
+from states.all_state import AllStates
 from aiogram import types
 
 

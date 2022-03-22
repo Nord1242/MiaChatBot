@@ -6,7 +6,7 @@ from aiogram_dialog.widgets.kbd import Button
 
 from loader import dp, bot, async_sessionmaker
 
-from states.dialog_state import AllStates
+from states.all_state import AllStates
 from database.models import ThemeTable
 
 from repositories.repo import SQLAlchemyRepo
@@ -17,8 +17,8 @@ from aiogram import types
 from typing import Any
 
 
-async def get_user_id(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager):
-    dialog_manager.current_context().dialog_data.update(user_id=call.from_user.id)
+# async def get_user_id(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager):
+#     dialog_manager.current_context().dialog_data.update(user_id=call.from_user.id)
 
 
 async def create_dialog(message: types.Message, dialog: Dialog, dialog_manager: DialogManager):
@@ -59,14 +59,16 @@ async def suggested_themes(dialog_manager: DialogManager, **kwargs):
 async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, companion_id: str):
     user_id = call.from_user.id
     companion_id = int(companion_id)
-    repo: SQLAlchemyRepo = dialog_manager.data.get('repo')
-    await repo.get_repo(ThemeRepo).delete_theme(user_id=companion_id)
-    companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
-    ss1 = await companion_manager.start(AllStates.in_dialog, mode=StartMode.RESET_STACK,
-                                  data={'companion_id': user_id, "text": "Пользователь найден!"})
-    ss2 = await dialog_manager.start(AllStates.in_dialog, mode=StartMode.NORMAL,
-                               data={"companion_id": companion_id, "text": "Добро пожаловать в чат!"})
-    print(ss1, ss2)
+    if companion_id == user_id:
+        await call.answer(show_alert=True, text="Вы не можете выбрать свою тему!!")
+    else:
+        repo: SQLAlchemyRepo = dialog_manager.data.get('repo')
+        await repo.get_repo(ThemeRepo).delete_theme(user_id=companion_id)
+        companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
+        await companion_manager.start(AllStates.in_dialog, mode=StartMode.NORMAL,
+                                      data={'companion_id': user_id, "text": "Пользователь найден!"})
+        await dialog_manager.start(AllStates.in_dialog, mode=StartMode.NORMAL,
+                                   data={"companion_id": companion_id, "text": "Добро пожаловать в чат!"})
 
 
 async def text_join_in_dialog(dialog_manager: DialogManager, **kwargs):
@@ -78,7 +80,7 @@ async def cancel_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: 
     start_data = dialog_manager.current_context().start_data
     companion_id = start_data.get("companion_id")
     companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
-    await dialog_manager.start(AllStates.cancel, mode=StartMode.NORMAL,
+    await dialog_manager.start(AllStates.cancel, mode=StartMode.RESET_STACK,
                                data={"text": "Вы завершили диалог", "random_start": True})
     await companion_manager.start(AllStates.cancel, mode=StartMode.RESET_STACK,
                                   data={"text": "Собеседник завершил диалог", "random_start": True})

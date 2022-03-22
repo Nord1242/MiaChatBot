@@ -1,5 +1,4 @@
 from sqlalchemy import insert, select, delete
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import ThemeTable
 from .base_repo import BaseSQLAlchemyRepo
