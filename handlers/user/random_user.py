@@ -7,10 +7,13 @@ from repositories.random_user_repository import RandomUsersRepo
 import random
 from states.all_state import AllStates
 
+from analytics import NamedEventPre
+
 
 async def search_random_user(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager):
-
     repo: SQLAlchemyRepo = dialog_manager.data.get('repo')
+    objects_queue = dialog_manager.data.get("objects_queue")
+    print(objects_queue)
     user_repo = repo.get_repo(RandomUsersRepo)
     user_id = call.from_user.id
     all_users = await user_repo.get_all_users()
@@ -28,6 +31,8 @@ async def search_random_user(call: types.CallbackQuery, widget: Any, dialog_mana
             await companion_manager.start(AllStates.in_dialog, mode=StartMode.NORMAL,
                                           data={'companion_id': user_id, "text": "Пользователь найден!",
                                                 "state_start": True})
+        objects_queue.put(NamedEventPre(event="Рандоиный пользователь найден"))
     else:
+        objects_queue.put(NamedEventPre(event="Поиск рандомного пользователя"))
         dialog_manager.current_context().dialog_data.update(random_start=True)
         await user_repo.add_user(user_id=user_id)

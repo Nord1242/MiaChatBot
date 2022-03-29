@@ -16,6 +16,14 @@ class DB:
 
 
 @dataclass
+class InfluxDB:
+    host: str
+    org: str
+    token: str
+
+
+
+@dataclass
 class Redis:
     host: str
 
@@ -29,6 +37,7 @@ class PAY:
 class Config:
     bot: Bot
     db: DB
+    influxdb: InfluxDB
     redis: Redis
     pay: PAY
 
@@ -43,6 +52,12 @@ def load_config():
             db_name=env.str("DB_NAME"),
             user=env.str("DB_USER"),
             password=env.str("DB_PASS")
+        ),
+        influxdb=InfluxDB(
+            host=env.str("INFLUXDB_HOST"),
+            org=env.str("INFLUXDB_ORG"),
+            token=env.str("INFLUXDB_TOKEN"),
+
         ),
         redis=Redis(
             host=env.str("REDIS_HOST")

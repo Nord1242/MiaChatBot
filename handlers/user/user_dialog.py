@@ -16,12 +16,14 @@ from repositories.random_user_repository import RandomUsersRepo
 from aiogram import types
 from typing import Any
 
-
+from analytics import NamedEventPre
 # async def get_user_id(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager):
 #     dialog_manager.current_context().dialog_data.update(user_id=call.from_user.id)
 
 
 async def create_dialog(message: types.Message, dialog: Dialog, dialog_manager: DialogManager):
+    objects_queue = dialog_manager.data.get("objects_queue")
+    objects_queue.put(NamedEventPre(event="Создание диалог"))
     last_message_id = dialog_manager.current_stack().last_message_id
     theme_name = message.text
     user_id = message.from_user.id
@@ -37,6 +39,7 @@ async def cancel_search(call: types.CallbackQuery, button: Button, dialog_manage
         state = AllStates.main_menu
         await repo.get_repo(RandomUsersRepo).delete_user(user_id=call.from_user.id)
     else:
+        print('ss')
         state = AllStates.dialog_menu
         await repo.get_repo(ThemeRepo).delete_theme(user_id=call.from_user.id)
     await dialog_manager.switch_to(state=state)
@@ -57,6 +60,8 @@ async def suggested_themes(dialog_manager: DialogManager, **kwargs):
 
 
 async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, companion_id: str):
+    objects_queue = dialog_manager.data.get("objects_queue")
+    objects_queue.put(NamedEventPre(event="Присоединение к диалогу"))
     user_id = call.from_user.id
     companion_id = int(companion_id)
     if companion_id == user_id:
@@ -104,7 +109,6 @@ async def return_menu(call: types.CallbackQuery, widget: Any, dialog_manager: Di
 
 
 async def dialog(message: types.Message, dialog: Dialog, dialog_manager: DialogManager):
-    print(f"user.id{message.from_user.id}\nstate{dialog_manager.current_context().state}")
     companion_id = dialog_manager.current_context().start_data.get("companion_id")
     dialog_manager.show_mode = ShowMode.EDIT
     await message.copy_to(chat_id=companion_id)

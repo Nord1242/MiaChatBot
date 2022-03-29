@@ -10,8 +10,7 @@ from handlers.user.user_dialog import create_dialog, cancel_search, join_in_dial
     text_join_in_dialog, cancel_dialog, who_cancel_dialog, dialog, return_menu
 from handlers.user.random_user import search_random_user
 from handlers.user.buy_subscription import buy_subscription, get_subscriptions
-from handlers.user.user import check_profile_in_base, get_login, reg_done, when_checked, \
-    show_info_profile, show_button_reg
+from handlers.user.user import get_profile_data, when_checked
 import operator
 from aiogram_dialog.manager.protocols import LaunchMode
 from typing import Dict
@@ -30,17 +29,11 @@ dialog_window = Dialog(
                 id="check",
             ),
             Group(
-                Group(
-                    Button(Format("Ник: {data[login]}"), id="login"),
-                    Button(Const("👥 Контакты"), id="show_contacts"),
-                    SwitchTo(Const("❌ Подписка"), id="buy_sub", state=AllStates.buy_subscription,
-                             when=lambda data, w, m: data["data"]["sub"] is None),
-                    when=show_info_profile,
-                    width=2
-                ),
-                SwitchTo(Const("Регистрация"), id="registration", state=AllStates.start_reg,
-                         when=show_button_reg),
+                Button(Format("Ник: {data[login]}"), id="login"),
+                SwitchTo(Const("Подписка ❌"), id="buy_sub", state=AllStates.buy_subscription,
+                         when=lambda data, w, m: data["data"]["sub"] is None),
                 when=when_checked,
+                width=2
             ),
             id="lg",
             item_id_getter=str,
@@ -51,19 +44,7 @@ dialog_window = Dialog(
                  state=AllStates.waiting_user),
         SwitchTo(Const('💬 Меню диалогов'), id="dialog_menu", state=AllStates.dialog_menu),
         state=AllStates.main_menu,
-        getter=check_profile_in_base
-    ),
-    Window(
-        Const("Введите ваш логин"),
-        MessageInput(get_login),
-        state=AllStates.start_reg,
-    ),
-    Window(
-        Format("{text}"),
-        SwitchTo(Const("ℹ️ В главное меню"), id='return_to_menu', state=AllStates.main_menu),
-        getter=reg_done,
-        state=AllStates.form_done
-
+        getter=get_profile_data
     ),
     Window(
         Const("Выберите срок подписки"),
@@ -130,7 +111,9 @@ dialog_window = Dialog(
     Window(
         Format("{text}"),
         MessageInput(dialog),
-        Button(Const("Завершить диалог"), id="cancel_dialog", on_click=cancel_dialog),
+        Row(
+            Button(Const("Завершить диалог"), id="cancel_dialog", on_click=cancel_dialog),
+            Button(Const("Добавить собеседника в друзья"), id="add_user_in_contacts")),
         state=AllStates.in_dialog,
         getter=text_join_in_dialog
 
@@ -140,6 +123,5 @@ dialog_window = Dialog(
         Button(Format("{button}"), id="return_to_dialog_menu", on_click=return_menu),
         state=AllStates.cancel,
         getter=who_cancel_dialog
-    )
-
+    ),
 )

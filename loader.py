@@ -5,7 +5,11 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from aiogram_dialog import DialogRegistry
 from database.database_utility import make_connection_string
-from aiogram.dispatcher.fsm.storage.redis import RedisStorage
+from analytics import InfluxAnalyticsClient
+from aiohttp import web
+from queue import Queue
+# from aiogram.dispatcher.fsm.storage.redis import RedisStorage
+# import os
 
 # loadconfig
 config: Config = load_config()
@@ -21,3 +25,21 @@ bot = Bot(token=config.bot.token, parse_mode="HTML")
 engine = create_async_engine(make_connection_string(config.db), future=True)
 async_sessionmaker = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
+# collection statistics
+objects_queue = Queue()
+influx = InfluxAnalyticsClient(
+    url=config.influxdb.host, token=config.influxdb.token, org=config.influxdb.org, objects_queue=objects_queue
+)
+
+# webhook settings
+# WEBHOOK_HOST = f'https://{config.webhook.heroku_app_name}.herokuapp.com'
+# WEBHOOK_PATH = f'/webhook/{config.bot.token}'
+# WEBHOOK_URL = f'{WEBHOOK_HOST}{WEBHOOK_PATH}'
+#
+#
+# # webserver settings
+# WEBAPP_HOST = '0.0.0.0'
+# WEBAPP_PORT = os.getenv('PORT', default=8000)
+
+# aiohttp
+# app = web.Application()

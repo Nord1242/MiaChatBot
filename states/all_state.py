@@ -17,3 +17,5 @@ class AllStates(StatesGroup):
     start_reg = State()
 
     form_done = State()
+
+    add_in_friend = State()
