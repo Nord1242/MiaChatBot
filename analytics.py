@@ -12,6 +12,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 # "сырые" объекты, которые прилетают из хэндлеров или мидлварей
 RawUpdatePre = namedtuple("RawUpdatePre", ["is_handled"])
 NamedEventPre = namedtuple("NamedEventPre", ["event"])
+UniqueUserPre = namedtuple("UniqueUserPre", [])
 
 
 # Объект апдейта для логирования по типу обработан/не обработан
@@ -27,6 +28,25 @@ class RawUpdate:
 class NamedEvent:
     timestamp: datetime
     event: str
+    updates_in_batch: int
+
+
+# # Объект сбора онлайна
+# @dataclass
+# class UserOnline:
+#     timestamp: datetime
+#     updates_in_batch: int
+
+
+@dataclass
+class UniqueUser:
+    timestamp: datetime
+    updates_in_batch: int
+
+
+@dataclass
+class AllUniqueUser:
+    timestamp: datetime
     updates_in_batch: int
 
 
@@ -59,6 +79,8 @@ class InfluxAnalyticsClient(threading.Thread):
 
         handled_count = 0
         unhandled_count = 0
+        day_unique_user_count = 0
+        all_unique_user_count = 0
         named_events = {}
         while not self.stop_flag.is_set():
             for index in range(self.objects_queue.qsize()):
@@ -72,10 +94,13 @@ class InfluxAnalyticsClient(threading.Thread):
                     elif isinstance(new_object, NamedEventPre):
                         named_events.setdefault(new_object.event, 0)
                         named_events[new_object.event] += 1
+                    elif isinstance(new_object, UniqueUserPre):
+                        day_unique_user_count += 1
+                        all_unique_user_count += 1
                 except Empty:
                     # Наличие N элементов в очереди не гарантирует, что все N можно забрать
                     break
-
+            print(day_unique_user_count)
             # Отправка при наличии обработанных апдейтов
             if handled_count > 0:
                 self.write_update(
@@ -86,7 +111,16 @@ class InfluxAnalyticsClient(threading.Thread):
                     )
                 )
                 handled_count = 0
-
+            self.write_unique_user(
+                UniqueUser(
+                    timestamp=datetime.utcnow(),
+                    updates_in_batch=day_unique_user_count
+                ))
+            self.all_write_unique_user(
+                UniqueUser(
+                    timestamp=datetime.utcnow(),
+                    updates_in_batch=all_unique_user_count
+                ))
             # Отправка именованных событий
             for key, value in named_events.items():
                 if value > 0:
@@ -99,10 +133,13 @@ class InfluxAnalyticsClient(threading.Thread):
                     )
                 named_events[key] = 0
 
+            # Сбор онлайна
+            if datetime.utcnow().strftime("%H:%M") == "22:35":
+                day_unique_user_count = 0
             sleep(3)
         print("InfluxAnalyticsClient stopped")
 
-    def __write_generic(self, bucket: str, tags: List[str], obj: Union[RawUpdate, NamedEvent]):
+    def __write_generic(self, bucket: str, tags: List[str], obj: Union[RawUpdate, NamedEvent, UniqueUser]):
         """
         Отправка произвольного события в InfluxDB
 
@@ -124,4 +161,11 @@ class InfluxAnalyticsClient(threading.Thread):
         self.__write_generic(bucket="updates", tags=["is_handled"], obj=update)
 
     def write_event(self, event: NamedEvent):
-        self.__write_generic("events", ["event"], event)
+        self.__write_generic(bucket="events", tags=["event"], obj=event)
+
+    def write_unique_user(self, unique_user: UniqueUser):
+        self.__write_generic(bucket="day_unique_user", tags=["unique_user"], obj=unique_user)
+
+    def all_write_unique_user(self, unique_user: UniqueUser):
+        self.__write_generic(bucket="all_unique_user", tags=["unique_user"], obj=unique_user)
+

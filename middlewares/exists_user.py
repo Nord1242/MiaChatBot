@@ -5,8 +5,9 @@ from aiogram.types import TelegramObject, CallbackQuery, Message
 from typing import Any, Awaitable, Callable, Dict
 from typing import Union
 from datetime import datetime
-from analytics import NamedEventPre
+from analytics import UniqueUserPre
 from queue import Queue
+from loader import dp
 
 
 class ExistsUser(BaseMiddleware):
@@ -23,6 +24,7 @@ class ExistsUser(BaseMiddleware):
         start_time = datetime.now()
         user = await repo.get_repo(UserRepo).get_user(telegram_user.id)
         if user is None:
+            objects_queue.put(UniqueUserPre())
             user = await repo.get_repo(UserRepo).add_user(
                 user_id=telegram_user.id,
                 first_name=telegram_user.first_name,
@@ -30,9 +32,8 @@ class ExistsUser(BaseMiddleware):
                 username=telegram_user.username,
                 start_date=start_time
             )
-            objects_queue.put(NamedEventPre(event="Уникальный пользователь"))
         data['user'] = user
         result = await handler(event, data)
 
-        # data.pop('user')
-        # return result
+        data.pop('user')
+        return result

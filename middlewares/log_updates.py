@@ -1,7 +1,9 @@
 import datetime
+from pprint import pprint
 from queue import Queue
 from typing import Any, Awaitable, Callable, Dict
 
+from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram import BaseMiddleware
 from aiogram.dispatcher.event.bases import UNHANDLED
 from aiogram.types import TelegramObject, Message, CallbackQuery
@@ -21,7 +23,6 @@ class LogUpdatesMiddleware(BaseMiddleware):
             data: Dict[str, Any]
     ) -> Any:
         objects_queue: Queue = data.get("objects_queue")
-
         result = await handler(event, data)
         event_datetime = datetime.datetime.utcnow()
         if isinstance(event, Message):
