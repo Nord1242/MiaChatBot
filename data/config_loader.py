@@ -22,15 +22,12 @@ class InfluxDB:
     token: str
 
 
-
 @dataclass
 class Redis:
     host: str
 
 
-@dataclass
-class PAY:
-    token: str
+
 
 
 @dataclass
@@ -39,8 +36,6 @@ class Config:
     db: DB
     influxdb: InfluxDB
     redis: Redis
-    pay: PAY
-
 
 def load_config():
     env = Env()
@@ -53,6 +48,7 @@ def load_config():
             user=env.str("DB_USER"),
             password=env.str("DB_PASS")
         ),
+        # redis_for_online=RedisForOnline(),
         influxdb=InfluxDB(
             host=env.str("INFLUXDB_HOST"),
             org=env.str("INFLUXDB_ORG"),
@@ -61,8 +57,5 @@ def load_config():
         ),
         redis=Redis(
             host=env.str("REDIS_HOST")
-        ),
-        pay=PAY(
-            token=env.str("YOOTOKEN")
         )
     )

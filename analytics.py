@@ -2,6 +2,7 @@ import threading
 from collections import namedtuple
 from dataclasses import dataclass
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from queue import Queue, Empty
 from time import sleep
 from typing import Union, List
@@ -76,7 +77,8 @@ class InfluxAnalyticsClient(threading.Thread):
 
         При выставлении флага {stopflag} на очередной итерации цикл прекращает обработку
         """
-
+        next_day = datetime.utcnow() + relativedelta(days=1)
+        online_count = 0
         handled_count = 0
         unhandled_count = 0
         day_unique_user_count = 0
@@ -134,8 +136,9 @@ class InfluxAnalyticsClient(threading.Thread):
                 named_events[key] = 0
 
             # Сбор онлайна
-            if datetime.utcnow().strftime("%H:%M") == "22:35":
+            if datetime.utcnow() == next_day:
                 day_unique_user_count = 0
+                next_day += relativedelta(days=1)
             sleep(3)
         print("InfluxAnalyticsClient stopped")
 

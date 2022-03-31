@@ -8,15 +8,17 @@ from database.database_utility import make_connection_string
 from analytics import InfluxAnalyticsClient
 from aiohttp import web
 from queue import Queue
-# from aiogram.dispatcher.fsm.storage.redis import RedisStorage
+import redis
+from aiogram.dispatcher.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
+
 # import os
 
 # loadconfig
 config: Config = load_config()
 
 # registration the bot and its components
-# storage = RedisStorage.from_url(f"redis://{config.redis.host}")
-storage = MemoryStorage()
+storage = RedisStorage.from_url(f"redis://{config.redis.host}", key_builder=DefaultKeyBuilder(with_destiny=True))
+# storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 registry = DialogRegistry(dp)
 bot = Bot(token=config.bot.token, parse_mode="HTML")
