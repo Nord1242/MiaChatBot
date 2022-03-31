@@ -25,6 +25,9 @@ class InfluxDB:
 @dataclass
 class Redis:
     host: str
+    port: int
+    db: int
+    password: str
 
 
 
@@ -56,6 +59,9 @@ def load_config():
 
         ),
         redis=Redis(
-            host=env.str("REDIS_HOST")
+            host=env.str("REDIS_HOST"),
+            port=env.str("REDIS_PORT"),
+            password=env.str("REDIS_PASSWORD"),
+            db=env.int("REDIS_DB")
         )
     )

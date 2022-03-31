@@ -26,3 +26,4 @@ class Users(Base):
     username = Column(String(length=100), nullable=True)
     sub = Column('date_sub', DateTime(timezone=True), default=None, nullable=True)
     start_data = Column('start_date', DateTime(timezone=True), default=None, nullable=True)
+

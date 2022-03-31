@@ -17,8 +17,12 @@ from aiogram.dispatcher.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 config: Config = load_config()
 
 # registration the bot and its components
-storage = RedisStorage.from_url(f"redis://{config.redis.host}", key_builder=DefaultKeyBuilder(with_destiny=True))
-# storage = MemoryStorage()
+# storage = RedisStorage.from_url(
+#     url=f"redis://roman:{config.redis.password}@{config.redis.host}:{config.redis.port}",
+#     key_builder=DefaultKeyBuilder(with_destiny=True),
+#     connection_kwargs={"decode_responses": True, "db": config.redis.db}
+# )
+storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 registry = DialogRegistry(dp)
 bot = Bot(token=config.bot.token, parse_mode="HTML")
