@@ -25,12 +25,25 @@ class InfluxDB:
 @dataclass
 class Redis:
     host: str
-    port: int
-    db: int
     password: str
 
+@dataclass
+class Buy:
+    api_id: int
+    api_key: str
+    buy_url: str
 
 
+@dataclass
+class WebHook:
+    domain: str
+    path: str
+
+
+@dataclass
+class WebApp:
+    host: str
+    port: int
 
 
 @dataclass
@@ -38,7 +51,11 @@ class Config:
     bot: Bot
     db: DB
     influxdb: InfluxDB
+    webhook: WebHook
+    webapp: WebApp
+    buy: Buy
     redis: Redis
+
 
 def load_config():
     env = Env()
@@ -51,17 +68,28 @@ def load_config():
             user=env.str("DB_USER"),
             password=env.str("DB_PASS")
         ),
-        # redis_for_online=RedisForOnline(),
+        webhook=WebHook(
+            domain=env.str("WEBHOOK_HOST"),
+            path=f"/bot-webhook/{env.str('BOT_TOKEN')}"
+        ),
         influxdb=InfluxDB(
             host=env.str("INFLUXDB_HOST"),
             org=env.str("INFLUXDB_ORG"),
             token=env.str("INFLUXDB_TOKEN"),
 
         ),
+        buy=Buy(
+            api_id=env.int("API_ID"),
+            api_key=env.str("API_KEY"),
+            buy_url=env.str("BUY_URL")
+        ),
+        webapp=WebApp(
+            host=env.str("APP_HOST"),
+            port=env.int("APP_PORT")
+
+        ),
         redis=Redis(
             host=env.str("REDIS_HOST"),
-            port=env.str("REDIS_PORT"),
-            password=env.str("REDIS_PASSWORD"),
-            db=env.int("REDIS_DB")
+            password=env.str("REDIS_PASSWORD")
         )
     )

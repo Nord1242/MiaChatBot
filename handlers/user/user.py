@@ -18,7 +18,7 @@ async def get_profile_data(dialog_manager: DialogManager, **kwargs):
     user_profile = await user_repo.get_user(user_id=user.id)
     return {
         "login": user_profile.first_name,
-        "sub": user_profile.sub if user_profile else None,
+        "sub": user_profile.product_date_end if user_profile else None,
     }
 
 

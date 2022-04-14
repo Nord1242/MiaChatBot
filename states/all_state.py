@@ -2,8 +2,6 @@ from aiogram.dispatcher.fsm.state import StatesGroup, State
 
 
 class AllStates(StatesGroup):
-    buy_subscription = State()
-    buy_done = State()
 
     main_menu = State()
     dialog_menu = State()
@@ -14,8 +12,10 @@ class AllStates(StatesGroup):
     in_dialog = State()
     cancel = State()
 
-    start_reg = State()
+    buy_subscription = State()
+    start_buy = State()
+    check_buy = State()
+    successful_payment = State()
+    unsuccessful_payment = State()
 
-    form_done = State()
 
-    add_in_friend = State()

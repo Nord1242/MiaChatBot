@@ -46,10 +46,6 @@ class UniqueUser:
     updates_in_batch: int
 
 
-@dataclass
-class AllUniqueUser:
-    timestamp: datetime
-    updates_in_batch: int
 
 
 class InfluxAnalyticsClient(threading.Thread):
@@ -79,13 +75,15 @@ class InfluxAnalyticsClient(threading.Thread):
         При выставлении флага {stopflag} на очередной итерации цикл прекращает обработку
         """
         users_list = {}
+        named_events = {}
+        unique_user_count = 0
+
         next_day = datetime.utcnow() + relativedelta(days=1)
-        online_count = 0
+        online_count = len(users_list)
+
         handled_count = 0
         unhandled_count = 0
-        day_unique_user_count = 0
-        all_unique_user_count = 0
-        named_events = {}
+
         while not self.stop_flag.is_set():
             for index in range(self.objects_queue.qsize()):
                 try:
@@ -99,12 +97,13 @@ class InfluxAnalyticsClient(threading.Thread):
                         named_events.setdefault(new_object.event, 0)
                         named_events[new_object.event] += 1
                     elif isinstance(new_object, UniqueUserPre):
-                        day_unique_user_count += 1
-                        all_unique_user_count += 1
-                    elif isinstance(new_object, UniqueUserPre):
+                        unique_user_count += 1
+                    elif isinstance(new_object, UserOnlinePre):
                         if new_object.user_id not in users_list:
-                            online_count += 1
-                            users_list.setdefault(new_object.user_id, datetime.utcnow())
+                            users_list.setdefault(new_object.user_id, datetime.utcnow() + relativedelta(minutes=1))
+                        else:
+                            users_list[new_object.user_id] = datetime.utcnow() + relativedelta(minutes=1)
+
                 except Empty:
                     # Наличие N элементов в очереди не гарантирует, что все N можно забрать
                     break
@@ -124,33 +123,31 @@ class InfluxAnalyticsClient(threading.Thread):
                     updates_in_batch=online_count
                 )
             )
-            self.write_unique_user(
-                UniqueUser(
-                    timestamp=datetime.utcnow(),
-                    updates_in_batch=day_unique_user_count
-                ))
-            self.all_write_unique_user(
-                UniqueUser(
-                    timestamp=datetime.utcnow(),
-                    updates_in_batch=all_unique_user_count
-                ))
             # Отправка именованных событий
             for key, value in named_events.items():
                 if value > 0:
                     self.write_event(
                         NamedEvent(
-                            timestamp=datetime.utcnow() + relativedelta(minutes=),
+                            timestamp=datetime.utcnow(),
                             event=key,
                             updates_in_batch=value
                         )
                     )
                 named_events[key] = 0
-
             # Сбор онлайна
             if datetime.utcnow() == next_day:
-                day_unique_user_count = 0
+                self.write_unique_user(
+                    UniqueUser(
+                        timestamp=datetime.utcnow(),
+                        updates_in_batch=unique_user_count
+                    ))
+                unique_user_count = 0
                 next_day += relativedelta(days=1)
-
+            # for user_id, time in users_list.items():
+            #     if time <= datetime.utcnow():
+            #         users_list.pop(user_id)
+            users_list = {user_id: time for user_id, time in users_list.items() if time >= datetime.utcnow()}
+            online_count = len(users_list)
             sleep(3)
         print("InfluxAnalyticsClient stopped")
 
@@ -183,6 +180,3 @@ class InfluxAnalyticsClient(threading.Thread):
 
     def write_unique_user(self, unique_user: UniqueUser):
         self.__write_generic(bucket="day_unique_user", tags=["unique_user"], obj=unique_user)
-
-    def all_write_unique_user(self, unique_user: UniqueUser):
-        self.__write_generic(bucket="all_unique_user", tags=["unique_user"], obj=unique_user)

@@ -1,5 +1,4 @@
 from data.config_loader import DB
-from slugify import slugify
 
 
 def make_connection_string(db: DB):

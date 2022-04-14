@@ -7,7 +7,7 @@ from typing import Union
 from datetime import datetime
 from analytics import UniqueUserPre
 from queue import Queue
-from loader import dp
+from pprint import pprint
 
 
 class ExistsUser(BaseMiddleware):
@@ -21,16 +21,14 @@ class ExistsUser(BaseMiddleware):
         telegram_user = data.get('event_chat')
         objects_queue: Queue = data.get("objects_queue")
         repo: SQLAlchemyRepo = data['repo']
-        start_time = datetime.now()
         user = await repo.get_repo(UserRepo).get_user(telegram_user.id)
         if user is None:
             objects_queue.put(UniqueUserPre())
             user = await repo.get_repo(UserRepo).add_user(
                 user_id=telegram_user.id,
-                first_name=telegram_user.first_name,
-                last_name=telegram_user.last_name,
                 username=telegram_user.username,
-                start_date=start_time
+                first_name=telegram_user.first_name,
+                last_name=telegram_user.last_name
             )
         data['user'] = user
         result = await handler(event, data)

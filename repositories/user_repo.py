@@ -8,9 +8,8 @@ from datetime import datetime
 class UserRepo(BaseSQLAlchemyRepo):
     model = Users
 
-    async def add_user(self, user_id: int, first_name: str, last_name: str, username: str, start_date: datetime):
-        user = self.model(telegram_user_id=user_id, first_name=first_name, last_name=last_name, username=username,
-                          start_data=start_date)
+    async def add_user(self, user_id: int, first_name: str, last_name: str, username: str):
+        user = self.model(telegram_user_id=user_id, first_name=first_name, last_name=last_name, username=username)
         self._session.add(user)
         await self._session.commit()
 

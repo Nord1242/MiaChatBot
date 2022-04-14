@@ -2,14 +2,14 @@ from states.all_state import AllStates
 
 from aiogram_dialog import Dialog, Window, DialogManager
 from aiogram_dialog.widgets.kbd import Button, Group, SwitchTo, Back, Next, Select, ScrollingGroup, Column, Row, \
-    ListGroup, Checkbox, Radio
+    ListGroup, Checkbox, Url
 from aiogram_dialog.widgets.text import Const, Format
 from aiogram_dialog.widgets.input import MessageInput
 
 from handlers.user.user_dialog import create_dialog, cancel_search, join_in_dialog, suggested_themes, \
     text_join_in_dialog, cancel_dialog, who_cancel_dialog, dialog, return_menu
 from handlers.user.random_user import search_random_user
-from handlers.user.buy_subscription import buy_subscription, get_subscriptions
+from handlers.user.buy_subscription import buy_subscription, get_subscriptions, get_data_for_buy, cancel_pay
 from handlers.user.user import get_profile_data, when_checked
 import operator
 from aiogram_dialog.manager.protocols import LaunchMode
@@ -62,10 +62,20 @@ dialog_window = Dialog(
         state=AllStates.buy_subscription
     ),
     Window(
+        Format('{product_desc}'),
+        Url(
+            Const('Купить подписку'),
+            Format('{url}'),
+        ),
+        Back(on_click=cancel_pay),
+        getter=get_data_for_buy,
+        state=AllStates.start_buy
+    ),
+    Window(
         Const("Вы купили товар"),
         SwitchTo(Const("ℹ️ В главное меню"), id="return_to_main_menu", state=AllStates.main_menu),
 
-        state=AllStates.buy_done
+        state=AllStates.successful_payment
     ),
 
     Window(
@@ -111,9 +121,7 @@ dialog_window = Dialog(
     Window(
         Format("{text}"),
         MessageInput(dialog),
-        Row(
-            Button(Const("Завершить диалог"), id="cancel_dialog", on_click=cancel_dialog),
-            Button(Const("Добавить собеседника в друзья"), id="add_user_in_contacts")),
+        Button(Const("Завершить диалог"), id="cancel_dialog", on_click=cancel_dialog),
         state=AllStates.in_dialog,
         getter=text_join_in_dialog
 
