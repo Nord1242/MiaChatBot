@@ -133,5 +133,7 @@ new_file.db
 mia_venv
 Dockerfile
 docker-compose.yml
+grafana_dashboard.json
+mia_venv
 
 *.pem

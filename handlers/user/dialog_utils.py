@@ -24,12 +24,27 @@ async def cancel_search(call: types.CallbackQuery, button: Button, dialog_manage
         switch_state = MenuStates.main_menu
         await conn.lrem('random_users', count=1, value=call.from_user.id)
     elif state == ThemeDialogStates.waiting_user_theme:
-        switch_state = ThemeDialogStates.dialog_menu
+        switch_state = ThemeDialogStates.search_theme
         await conn.hdel("user_theme", call.from_user.id)
         await conn.hdel("user_theme_top", call.from_user.id)
     await conn.hdel('companion_state', call.from_user.id)
     print(switch_state.__str__())
     await dialog_manager.start(state=switch_state)
+
+#
+# async def cancel_dialog_command(dialog_manager, current_context):
+#     if current_context and current_context.start_data:
+#         state = current_context.state
+#         companion_id = current_context.start_data.get("companion_id")
+#         companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
+#         state_switch = None
+#         if state == ThemeDialogStates.in_dialog_theme:
+#             state_switch = ThemeDialogStates.cancel_theme
+#         elif state == RandomDialogStates.in_dialog:
+#             state_switch = RandomDialogStates.cancel
+#         if state_switch:
+#             await companion_manager.start(state_switch, mode=StartMode.RESET_STACK,
+#                                           data={"text": "Собеседник завершил диалог"})
 
 
 async def return_to_cancel_window(dialog_manager: DialogManager, companion_id: int, user_id: int):

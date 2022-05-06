@@ -9,7 +9,7 @@ from .check_ban import CheckUserBan
 from .check_user_time import CheckUserTime
 from .captcha import CheckCaptcha
 from .throttling import ThrottlingMiddleware
-
+from .cancle_dialog import CancelDialog
 
 from loader import dp
 from sqlalchemy.orm import sessionmaker
@@ -28,6 +28,7 @@ async def setup_middleware(sm: sessionmaker, rc: Redis):
     dp.message.middleware(CheckCaptcha())
     dp.message.middleware(SetUserBan())
     dp.message.middleware(ThrottlingMiddleware())
+    dp.message.middleware(CancelDialog())
 
     dp.callback_query.middleware(GetConnectionToRedis(rc))
     dp.callback_query.middleware(GetConnectionToDB(sm))

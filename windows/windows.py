@@ -17,7 +17,7 @@ from handlers.user.random_user import search_random_user
 from handlers.user.buy_subscription import buy_subscription, get_subscriptions, get_data_for_buy, get_top
 from handlers.user.user import get_profile_data, when_checked, check_changed, get_sub_data, checks_restrictions, \
     check_top, buy_sub, write_theme, unban, time_ban_info, get_captcha, check_captcha, ban_info, timeout
-from handlers.user.router import return_menu, start_buy_sub, go_in_dialog_menu, go_in_sub_data, go_in_create_theme
+from handlers.user.router import return_menu, start_buy_sub, return_to_search_theme, go_in_sub_data, go_in_create_theme
 import operator
 from aiogram_dialog.widgets.text import Jinja
 
@@ -108,8 +108,8 @@ menu_window = Dialog(
             when=when_checked,
             width=2
         ),
-        Button(Const('🔎 Случайный собеседник'), id="random_user", on_click=search_random_user),
-        Button(Const('💬 Меню диалогов'), id="dialog_menu", on_click=go_in_dialog_menu),
+        Button(Const('💬 Темы для диалога'), id="dialog_menu", on_click=return_to_search_theme),
+        Button(Const('🔎 Поиск собеседника'), id="random_user", on_click=search_random_user),
         state=MenuStates.main_menu,
         getter=get_profile_data
     ),
@@ -118,111 +118,27 @@ menu_window = Dialog(
             "В данный момент вы не находитесь в диалоге с собеседником.\n"
             "Выберите один из пунктов ниже, чтобы найти его"),
         Row(
-            Button(Const('🔎 Случайный собеседник'), id="random_user",
+            Button(Const('💬 Темы для диалога'), id="dialog_menu", on_click=return_to_search_theme),
+            Button(Const('🔎 Поиск собеседника'), id="random_user",
                    on_click=search_random_user),
-            Button(Const('💬 Меню диалогов'), id="dialog_menu", on_click=go_in_dialog_menu),
         ),
         SwitchTo(Const("🏠️ В главное меню"), id="return_to_main_menu", state=MenuStates.main_menu),
         state=MenuStates.not_companion
     )
 )
 
-random_dialog_windows = Dialog(
-    Window(
-        Const("🕵️‍♂️ Ожидайте собеседника"),
-        Button(Const("🚫 Отменить поиск"), id="cancel", on_click=cancel_search),
-        state=RandomDialogStates.waiting_user
-    ),
-    Window(
-        Const(
-            "Пользователь найден! 👀\nЧтобы завершить диалог, нажмите кнопку ниже или воспользуйтесь командой: /stop"),
-        MessageInput(dialog),
-        SwitchTo(Const("🛑 Завершить диалог"), id="cancel_random_dialog", on_click=cancel_dialog,
-                 state=RandomDialogStates.cancel),
-        state=RandomDialogStates.in_dialog,
-    ),
-    Window(
-        Format("{text}"),
-        Row(Button(Const("🏠️ В главное меню"), id="return_to_main_menu", on_click=return_menu),
-            SwitchTo(Const("📢 Пожаловаться"), id="report", state=RandomDialogStates.set_report)
-            ),
-        state=RandomDialogStates.cancel,
-        getter=who_cancel_dialog
-    ),
-    Window(
-        Format("{text}"),
-        Column(
-            Select(
-                Format("{item[0]}"),
-                id="report",
-                item_id_getter=operator.itemgetter(1),
-                items="report_button",
-                on_click=report,
-            )),
-        Back(Const("🔙 Назад")),
-        getter=who_cancel_dialog,
-        state=RandomDialogStates.set_report
-    ),
-    Window(
-        Const("📨 Жалоба была отправлена!\n\nСпасибо что делаете нашего бота лучше ☺️"),
-        Button(Const("🏠 В главное меню"), id="return_to_main_menu", on_click=return_menu),
-        state=RandomDialogStates.report
-    )
-)
-
 dialog_theme_window = Dialog(
-    Window(
-        Const("Добро пожаловать в меню диалогов! 💬\n\n"
-              "Проявите инициативу, создав интересную тему для пользователей нашей системы или выберите "
-              "её из списка доступных, выбор за вами."),
-        Group(
-            Button(Const("📝 Создать тему"), id="create_chat", on_click=checks_restrictions),
-            SwitchTo(Const("🗃 Выбрать тему"), id="search_chat", state=ThemeDialogStates.search_theme),
-            Button(Const("🏠 В главное меню"), id="return_to_main_menu", on_click=return_menu),
-            width=2
-        ),
-
-        state=ThemeDialogStates.dialog_menu,
-    ),
-    Window(
-        Format(
-            "Вы исчерпали количество доступных тем 😔\nСоздать новую можно через\n"
-            "{hour} час{hour_end} {minutes} минут{minutes_end}⏳\n"
-            "\nНе хотите ждать?\nСнимите ограничение уже сейчас, приобретя премиум доступ!"
-            "\nОзнакомится с доступным списком привилегий, можно по кнопке\nниже👇🏻"),
-        Button(Const("💎 Приобрести подписку"), id="buy_sub", on_click=start_buy_sub),
-        SwitchTo(Const("💬 В меню диалогов"), id="return_to_menu", state=ThemeDialogStates.dialog_menu),
-        state=ThemeDialogStates.timeout,
-        getter=timeout
-    ),
-    Window(
-        Const("Введите название темы"),
-        Select(
-            Format("{item[0]}"),
-            id="top_buttons",
-            item_id_getter=operator.itemgetter(1),
-            items="product_button",
-            on_click=buy_subscription,
-            when=lambda data, w, m: not data['top']
-        ),
-        SwitchTo(Const("💬 Вернуться в меню диалогов"), state=ThemeDialogStates.dialog_menu, id="return_to_menu"),
-        Row(
-            Checkbox(
-                Const("⚪️ Поднять в топ 💎"),
-                Const("🔘 Поднять в топ 💎"),
-                id="check_top",
-                default=True,
-                on_state_changed=check_top,
-            ), when=lambda data, w, m: data['top'] is True),
-        MessageInput(create_dialog),
-        state=ThemeDialogStates.write_theme,
-        getter=get_top
-    ),
-    Window(
-        Const("🕵️‍♂️ Ожидайте собеседника"),
-        Button(Const("🚫 Отменить поиск"), id="cancel", on_click=cancel_search),
-        state=ThemeDialogStates.waiting_user_theme
-    ),
+    # Window(
+    #     Const("Добро пожаловать в меню диалогов! 💬\n\n"
+    #           "Проявите инициативу, создав интересную тему для пользователей нашей системы или выберите "
+    #           "её из списка доступных, выбор за вами."),
+    #     Group(
+    #         SwitchTo(Const("🗃 Выбрать тему"), id="search_chat", state=ThemeDialogStates.search_theme),
+    #         width=2
+    #     ),
+    #
+    #     state=ThemeDialogStates.dialog_menu,
+    # ),
     Window(
         Const("⬇️ Выберите тему ниже"),
         Row(Button(Const("💎💎💎💎💎💎💎 Топ темы 💎💎💎💎💎💎💎"), id="top")),
@@ -249,10 +165,49 @@ dialog_theme_window = Dialog(
             width=2,
             height=10
         ),
-        SwitchTo(Const("💬 В меню диалогов"), id="return_to_dialog_menu",
-                 state=ThemeDialogStates.dialog_menu),
+        Button(Const("📝 Создать тему"), id="create_chat", on_click=checks_restrictions),
+        Button(Const("🏠 В главное меню"), id="return_to_main_menu", on_click=return_menu),
         getter=suggested_themes,
         state=ThemeDialogStates.search_theme
+    ),
+    # Window(
+    #     Format(
+    #         "Вы исчерпали количество доступных тем 😔\nСоздать новую можно через\n"
+    #         "{hour} час{hour_end} {minutes} минут{minutes_end}⏳\n"
+    #         "\nНе хотите ждать?\nСнимите ограничение уже сейчас, приобретя премиум доступ!"
+    #         "\nОзнакомится с доступным списком привилегий, можно по кнопке\nниже👇🏻"),
+    #     Button(Const("💎 Приобрести подписку"), id="buy_sub", on_click=start_buy_sub),
+    #     SwitchTo(Const("💬 В меню диалогов"), id="return_to_menu", state=ThemeDialogStates.dialog_menu),
+    #     state=ThemeDialogStates.timeout,
+    #     getter=timeout
+    # ),
+    Window(
+        Const("Введите название темы"),
+        Select(
+            Format("{item[0]}"),
+            id="top_buttons",
+            item_id_getter=operator.itemgetter(1),
+            items="product_button",
+            on_click=buy_subscription,
+            when=lambda data, w, m: not data['top']
+        ),
+        SwitchTo(Const("💬 К выбору тем"), state=ThemeDialogStates.search_theme, id="return_to_menu"),
+        Row(
+            Checkbox(
+                Const("⚪️ Поднять в топ 💎"),
+                Const("🔘 Поднять в топ 💎"),
+                id="check_top",
+                default=True,
+                on_state_changed=check_top,
+            ), when=lambda data, w, m: data['top'] is True),
+        MessageInput(create_dialog),
+        state=ThemeDialogStates.write_theme,
+        getter=get_top
+    ),
+    Window(
+        Const("🕵️‍♂️ Ожидайте собеседника"),
+        Button(Const("🚫 Отменить поиск"), id="cancel", on_click=cancel_search),
+        state=ThemeDialogStates.waiting_user_theme
     ),
     Window(
         Format("{text}"),
@@ -265,7 +220,7 @@ dialog_theme_window = Dialog(
     ),
     Window(
         Format("{text}"),
-        Row(Button(Const("💬 В меню диалогов"), id="return_to_dialog_menu", on_click=return_menu),
+        Row(Button(Const("💬 К выбору тем"), id="return_to_dialog_menu", on_click=return_to_search_theme),
             SwitchTo(Const("📢 Пожаловаться"), id="report", state=ThemeDialogStates.set_report)),
         state=ThemeDialogStates.cancel_theme,
         getter=who_cancel_dialog
@@ -286,10 +241,53 @@ dialog_theme_window = Dialog(
     ),
     Window(
         Const("📨 Жалоба была отправлена!\n\nСпасибо что делаете нашего бота лучше ☺️"),
-        Button(Const("💬 В меню диалогов"), id="return_to_dialog_menu", on_click=go_in_dialog_menu),
+        Button(Const("💬 К выбору тем"), id="return_to_dialog_menu", on_click=return_to_search_theme),
         state=ThemeDialogStates.report
     )
 
+)
+
+random_dialog_windows = Dialog(
+    Window(
+        Const("🕵️‍♂️ Ожидайте собеседника"),
+        Button(Const("🚫 Отменить поиск"), id="cancel", on_click=cancel_search),
+        state=RandomDialogStates.waiting_user
+    ),
+    Window(
+        Const(
+            "Пользователь найден! 👀\nЧтобы завершить диалог, нажмите кнопку ниже или воспользуйтесь командой: /stop"),
+        MessageInput(dialog),
+        SwitchTo(Const("🛑 Завершить диалог"), id="cancel_random_dialog", on_click=cancel_dialog,
+                 state=RandomDialogStates.cancel),
+        state=RandomDialogStates.in_dialog,
+    ),
+    Window(
+        Format("{text}"),
+        Row(Button(Const('🔎 Найти следующего собеседника'), id="random_user", on_click=search_random_user),
+            SwitchTo(Const("📢 Пожаловаться"), id="report", state=RandomDialogStates.set_report)),
+        Button(Const("🏠️ В главное меню"), id="return_to_main_menu", on_click=return_menu),
+        state=RandomDialogStates.cancel,
+        getter=who_cancel_dialog
+    ),
+    Window(
+        Format("{text}"),
+        Column(
+            Select(
+                Format("{item[0]}"),
+                id="report",
+                item_id_getter=operator.itemgetter(1),
+                items="report_button",
+                on_click=report,
+            )),
+        Back(Const("🔙 Назад")),
+        getter=who_cancel_dialog,
+        state=RandomDialogStates.set_report
+    ),
+    Window(
+        Const("📨 Жалоба была отправлена!\n\nСпасибо что делаете нашего бота лучше ☺️"),
+        Button(Const("🏠 В главное меню"), id="return_to_main_menu", on_click=return_menu),
+        state=RandomDialogStates.report
+    )
 )
 
 buy_sub = Dialog(

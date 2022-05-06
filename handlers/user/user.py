@@ -1,10 +1,10 @@
 from aiogram_dialog import DialogManager
 import math
 import re
+
 from repositories.product_repo import ProductRepo
 from repositories.repo import SQLAlchemyRepo
 from repositories.user_repo import UserRepo
-
 from aioredis.client import Redis
 from aiogram_dialog import ChatEvent, StartMode
 from aiogram_dialog.widgets.kbd import ManagedListGroupAdapter, ManagedCheckboxAdapter
@@ -13,6 +13,7 @@ from typing import Dict, Any
 from datetime import datetime, timedelta
 from database.models import Users
 from states.all_state import ThemeDialogStates, BuyStates, MenuStates
+from loader import dp
 
 import random
 
@@ -160,7 +161,8 @@ async def get_profile_data(dialog_manager: DialogManager, **kwargs):
     }
 
 
-async def checks_restrictions(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager):
+@dp.message(commands={'create'})
+async def checks_restrictions(call: types.CallbackQuery, widget: Any = None, dialog_manager: DialogManager = None):
     conn: Redis = dialog_manager.data.get('redis_conn')
     user: Users = dialog_manager.data.get('user')
     user_id = call.from_user.id

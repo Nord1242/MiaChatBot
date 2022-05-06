@@ -83,6 +83,10 @@ async def suggested_themes(dialog_manager: DialogManager, **kwargs):
                      user_id.decode('utf-8'))
                 )
             random.shuffle(themes_buttons)
+    if not themes_buttons:
+        themes_buttons = [('К сожалению никто не предложил тему 😔', 'sad')]
+    if not top_button:
+        top_button =  [('Тут будут находиться топ темы 🤩', 'sad')]
     return {
         "themes_buttons": themes_buttons,
         "top_button": top_button
@@ -90,6 +94,8 @@ async def suggested_themes(dialog_manager: DialogManager, **kwargs):
 
 
 async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, companion_id: str):
+    if companion_id == 'sad':
+        return
     conn: Redis = dialog_manager.data.get('redis_conn')
     objects_queue = dialog_manager.data.get("objects_queue")
     objects_queue.put(NamedEventPre(event="Присоединение к диалогу"))
