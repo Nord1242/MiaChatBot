@@ -109,7 +109,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
+.env
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -129,11 +129,15 @@ dmypy.json
 .pyre/
 
 probe.py
+
 new_file.db
+
 mia_venv
+
 Dockerfile
+
 docker-compose.yml
+
 grafana_dashboard.json
-mia_venv
 
 *.pem
