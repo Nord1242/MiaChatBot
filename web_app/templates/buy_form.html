@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Страница покупки</title>
+</head>
+<body>
+
+<!--<form action='https://anypay.io/merchant' accept-charset='utf-8' method='post'>-->
+<!--    <input type="hidden" name='merchant_id' value="{{pay_data.project_id}}">-->
+<!--    <input type="hidden" name='amount' value="{{pay_data.amount}}">-->
+<!--    <input type="hidden" name='currency' value="{{pay_data.currency}}">-->
+<!--    <input type="hidden" name='pay_id' value="{{pay_data.pay_id}}">-->
+<!--    <input type="hidden" name='desc' value="{{pay_data.desc}}">-->
+<!--    <input type="hidden" name='sign' value="{{sign}}">-->
+<!--    <input type='submit' value='Купить'>-->
+<!--</form>-->
+<form action='https://payok.io/pay' method="POST">
+    <input type="hidden" name='amount' value="{{pay_data.amount}}">
+    <input type="hidden" name='payment' value="{{pay_data.payment}}">
+    <input type="hidden" name='shop' value="{{pay_data.shop}}">
+    <input type="hidden" name='currency' value="{{pay_data.currency}}">
+    <input type="hidden" name='desc' value="{{pay_data.desc}}">
+    <input type="hidden" name='email' value="test@payok.io">
+    <input type="hidden" name='method' value="{{method}}">
+    <input type="hidden" name='sign' value="{{sign}}">
+    <input type='submit' value='Купить'>
+</form>
+</body>
+</html>

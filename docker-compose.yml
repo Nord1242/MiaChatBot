@@ -1,22 +1,66 @@
-version: "3.8"
-services:
-    bot:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        stop_signal: SIGINT
-        restart: "always"
-        env_file:
-            - .env
-        depends_on:
-            - influxdb
+version: "3.3"
 
-    influxdb:
-        image: influxdb:2.1-alpine
-        restart: "always"
-        volumes:
-            - "/home/roman/influxdb_data:/var/lib/influxdb2"
-        ports:
-            - "8080:8080"
-        env_file:
-            - .env
+services:
+  influxdb:
+    image: influxdb:2.1-alpine
+    restart: "always"
+    volumes:
+      - "/src/influx:/var/lib/influxdb2"
+    ports:
+      - "8086:8086"
+    env_file:
+      - .env
+
+  mia_bot:
+    container_name: mia_bot
+    environment:
+      - PYTHONUNBUFFERED=1
+    build:
+      context: .
+    links:
+      - db
+    restart: always
+    volumes:
+      - /src/bot-data:/var/www/www-root/data/www/mia-chatbot.ru/
+    env_file:
+      - .env
+    ports:
+      - "8443:8443"
+    command:
+      - "python3.9"
+      - "main_app.py"
+
+  db:
+    container_name: database
+    image: postgres:14
+    environment:
+      - POSTGRES_USER=roman
+      - POSTGRES_PASSWORD=29423212
+      - POSTGRES_DB=mia_database
+    restart: always
+    ports:
+      - 5432:5432
+    volumes:
+      - /src/database-data:/var/lib/postgresql/data/
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_HOST=localhost
+      - PGADMIN_DEFAULT_EMAIL=roma.polovik.03@mail.ru
+      - PGADMIN_DEFAULT_PASSWORD=423229Roman!Nord29423212!
+    restart: always
+    volumes:
+      - /src/:/var/lib
+    depends_on:
+      - db
+    ports:
+      - "5050:80"
+
+  redis:
+    image:
+      bitnami/redis:6.2.6
+    environment:
+      - REDIS_PASSWORD=MKB79r29kf413TQHzo5YNrVwftNWObejBjdHBWrDavNvMTsv923BiaNBLIW/xxUiSv88t921FtUUsM6h
+    ports:
+      - "6379"

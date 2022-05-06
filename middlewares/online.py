@@ -4,8 +4,8 @@ from queue import Queue
 from repositories.repo import SQLAlchemyRepo
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
-from analytics import UserOnlinePre
-
+from utils.analytics import UserOnlinePre
+from aiogram_dialog import DialogManager
 
 class OnlineMiddleware(BaseMiddleware):
 

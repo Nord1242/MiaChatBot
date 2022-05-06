@@ -3,6 +3,11 @@ from environs import Env
 
 
 @dataclass
+class Admin:
+    id: int
+
+
+@dataclass
 class Bot:
     token: str
 
@@ -27,11 +32,14 @@ class Redis:
     host: str
     password: str
 
+
 @dataclass
 class Buy:
-    api_id: int
+    api_id: str
     api_key: str
-    buy_url: str
+    project_id: int
+    secret_key: str
+    url: str
 
 
 @dataclass
@@ -48,6 +56,7 @@ class WebApp:
 
 @dataclass
 class Config:
+    admin: Admin
     bot: Bot
     db: DB
     influxdb: InfluxDB
@@ -62,6 +71,9 @@ def load_config():
     env.read_env()
     return Config(
         bot=Bot(token=env.str("BOT_TOKEN")),
+        admin=Admin(
+            id=env.int("ADMIN_ID")
+        ),
         db=DB(
             host=env.str("DB_HOST"),
             db_name=env.str("DB_NAME"),
@@ -79,9 +91,11 @@ def load_config():
 
         ),
         buy=Buy(
-            api_id=env.int("API_ID"),
+            api_id=env.str("API_ID"),
             api_key=env.str("API_KEY"),
-            buy_url=env.str("BUY_URL")
+            project_id=env.int("SHOP"),
+            secret_key=env.str("SECRET_KEY"),
+            url=env.str("BUY_URL")
         ),
         webapp=WebApp(
             host=env.str("APP_HOST"),

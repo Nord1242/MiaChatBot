@@ -1,38 +1,52 @@
-from repositories.repo import SQLAlchemyRepo
 from aiogram_dialog import DialogManager, StartMode
 from aiogram import types
 from typing import Any
-from aiogram.dispatcher.fsm.context import FSMContext
-from repositories.random_user_repository import RandomUsersRepo
 import random
-from states.all_state import AllStates
 
-from analytics import NamedEventPre
+from database.models import Users
+from states.all_state import RandomDialogStates
+from aioredis.client import Redis
+from utils.analytics import NamedEventPre
+from aiogram import Bot
+from asyncio import sleep
+
+
+async def add_random_user(dialog_manager: DialogManager, conn: Redis, user_id: int, objects_queue):
+    await conn.lpush('random_users', user_id)
+    await conn.hset("companion_state", key=user_id, value=RandomDialogStates.waiting_user.__str__())
+    objects_queue.put(NamedEventPre(event="Поиск рандомного пользователя"))
+    await dialog_manager.start(state=RandomDialogStates.waiting_user)
+
+
+async def connect_random_user(dialog_manager: DialogManager, user_id: int, companion_id: int, conn: Redis, user: Users):
+    companion_message = await conn.hget(name='companion_data', key=str(companion_id))
+    companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
+    bot: Bot = dialog_manager.data.get('bot')
+    await dialog_manager.start(RandomDialogStates.in_dialog, mode=StartMode.RESET_STACK,
+                               data={"companion_id": companion_id,
+                                     "text": "Пользователь найден!",
+                                     "random_start": True})
+    await conn.hdel('companion_data', str(companion_id))
+    await companion_manager.start(RandomDialogStates.in_dialog, mode=StartMode.RESET_STACK,
+                                  data={'companion_id': user_id,
+                                        "text": "Пользователь найден!",
+                                        "random_start": True})
 
 
 async def search_random_user(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager):
-    repo: SQLAlchemyRepo = dialog_manager.data.get('repo')
+    conn: Redis = dialog_manager.data.get('redis_conn')
     objects_queue = dialog_manager.data.get("objects_queue")
-    print(objects_queue)
-    user_repo = repo.get_repo(RandomUsersRepo)
+    user: Users = dialog_manager.data.get('user')
     user_id = call.from_user.id
-    all_users = await user_repo.get_all_users()
-    state = dialog_manager.current_context().state
-    if all_users:
-        user = random.choice(all_users)
-        companion_id = user.user_id
-        if call.from_user.id != companion_id:
-            await user_repo.delete_user(user_id=companion_id)
-            companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
-            user_manager = dialog_manager.bg(user_id=user_id, chat_id=user_id)
-            await user_manager.start(AllStates.in_dialog, mode=StartMode.NORMAL,
-                                     data={"companion_id": companion_id, "text": "Пользователь найден!",
-                                           "random_start": True})
-            await companion_manager.start(AllStates.in_dialog, mode=StartMode.NORMAL,
-                                          data={'companion_id': user_id, "text": "Пользователь найден!",
-                                                "state_start": True})
+    all_users = await conn.lrange(name='random_users', start=0, end=-1)
+    companion_id = int(random.choice(all_users)) if all_users else None
+    if all_users and call.from_user.id != companion_id:
+        await conn.lrem(name='random_users', count=1, value=companion_id)
         objects_queue.put(NamedEventPre(event="Рандоиный пользователь найден"))
+        companion_state = (await conn.hget(name="companion_state", key=companion_id)).decode('utf-8')
+        if companion_state != RandomDialogStates.in_dialog.__str__():
+            await connect_random_user(dialog_manager, user_id, companion_id, conn, user)
+        else:
+            await call.answer(show_alert=True, text="Пользователь уже нашел собеседника!!")
     else:
-        objects_queue.put(NamedEventPre(event="Поиск рандомного пользователя"))
-        dialog_manager.current_context().dialog_data.update(random_start=True)
-        await user_repo.add_user(user_id=user_id)
+        await add_random_user(dialog_manager, conn, user_id, objects_queue)

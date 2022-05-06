@@ -1,17 +1,12 @@
-FROM python:3.9-slim-buster as compile-image
-RUN apt-get update \
- && apt-get install -y --no-install-recommends build-essential gcc \
- && python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip \
-pip install --no-cache-dir -r requirements.txt
+FROM python:3.9.5
+WORKDIR /src
+RUN apt update
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+RUN python3.9 get-pip.py
+COPY requirements.txt /src
+RUN pip install -r requirements.txt
+COPY . /src
+ENV PATH="/mia_venv/bin:${PATH}"
+CMD ['python3.9', '-u', 'main_app.py']
 
-# Прод-образ, куда копируются все собранные ранее зависимости
-# Исходный image один и тот же, поэтому можно спокойно копировать
-FROM python:3.9-slim-buster
-COPY --from=compile-image /opt/venv /opt/venv
-WORKDIR /app
-ENV PATH="/opt/venv/bin:$PATH"
-COPY main_app.py /app/bot
-CMD ["python", "-m", "bot"]
+

@@ -1,14 +1,12 @@
 import datetime
-from pprint import pprint
 from queue import Queue
 from typing import Any, Awaitable, Callable, Dict
 
-from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram import BaseMiddleware
 from aiogram.dispatcher.event.bases import UNHANDLED
 from aiogram.types import TelegramObject, Message, CallbackQuery
 
-from analytics import RawUpdatePre
+from utils.analytics import RawUpdatePre
 
 
 class LogUpdatesMiddleware(BaseMiddleware):

@@ -1,7 +1,7 @@
 import threading
 from collections import namedtuple
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, time
 from dateutil.relativedelta import relativedelta
 from queue import Queue, Empty
 from time import sleep
@@ -13,7 +13,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 # "сырые" объекты, которые прилетают из хэндлеров или мидлварей
 RawUpdatePre = namedtuple("RawUpdatePre", ["is_handled"])
 NamedEventPre = namedtuple("NamedEventPre", ["event"])
-UniqueUserPre = namedtuple("UniqueUserPre", [])
+UniqueUserPre = namedtuple("UniqueUserPre", ["channel"])
 UserOnlinePre = namedtuple("UserOnlinePre", ["user_id"])
 
 
@@ -42,10 +42,9 @@ class UserOnline:
 
 @dataclass
 class UniqueUser:
+    channel: str
     timestamp: datetime
     updates_in_batch: int
-
-
 
 
 class InfluxAnalyticsClient(threading.Thread):
@@ -76,9 +75,10 @@ class InfluxAnalyticsClient(threading.Thread):
         """
         users_list = {}
         named_events = {}
-        unique_user_count = 0
+        unique_user = {}
 
-        next_day = datetime.utcnow() + relativedelta(days=1)
+        next_day = datetime.utcnow() + timedelta(days=1)
+        next_day = datetime.combine(next_day, time.min)
         online_count = len(users_list)
 
         handled_count = 0
@@ -97,12 +97,13 @@ class InfluxAnalyticsClient(threading.Thread):
                         named_events.setdefault(new_object.event, 0)
                         named_events[new_object.event] += 1
                     elif isinstance(new_object, UniqueUserPre):
-                        unique_user_count += 1
+                        unique_user.setdefault(new_object.channel, 0)
+                        unique_user[new_object.channel] += 1
                     elif isinstance(new_object, UserOnlinePre):
                         if new_object.user_id not in users_list:
-                            users_list.setdefault(new_object.user_id, datetime.utcnow() + relativedelta(minutes=1))
+                            users_list.setdefault(new_object.user_id, datetime.utcnow() + timedelta(minutes=30))
                         else:
-                            users_list[new_object.user_id] = datetime.utcnow() + relativedelta(minutes=1)
+                            users_list[new_object.user_id] = datetime.utcnow() + timedelta(minutes=30)
 
                 except Empty:
                     # Наличие N элементов в очереди не гарантирует, что все N можно забрать
@@ -123,6 +124,13 @@ class InfluxAnalyticsClient(threading.Thread):
                     updates_in_batch=online_count
                 )
             )
+            # Отправка уникальных пользователей с канала
+            for channel, users in unique_user.items():
+                self.write_unique_user(UniqueUser(
+                    timestamp=datetime.utcnow(),
+                    channel=channel,
+                    updates_in_batch=users
+                ))
             # Отправка именованных событий
             for key, value in named_events.items():
                 if value > 0:
@@ -135,23 +143,22 @@ class InfluxAnalyticsClient(threading.Thread):
                     )
                 named_events[key] = 0
             # Сбор онлайна
-            if datetime.utcnow() == next_day:
-                self.write_unique_user(
-                    UniqueUser(
-                        timestamp=datetime.utcnow(),
-                        updates_in_batch=unique_user_count
-                    ))
-                unique_user_count = 0
-                next_day += relativedelta(days=1)
+            if datetime.utcnow() >= next_day:
+                for channel, users in unique_user.items():
+                    unique_user[channel] = 0
+                next_day = datetime.utcnow() + timedelta(days=1)
+                next_day = datetime.combine(next_day, time.min)
             # for user_id, time in users_list.items():
             #     if time <= datetime.utcnow():
             #         users_list.pop(user_id)
-            users_list = {user_id: time for user_id, time in users_list.items() if time >= datetime.utcnow()}
+            users_list = {user_id: act_time for user_id, act_time in users_list.items() if
+                          act_time >= datetime.utcnow()}
             online_count = len(users_list)
             sleep(3)
         print("InfluxAnalyticsClient stopped")
 
-    def __write_generic(self, bucket: str, tags: List[str], obj: Union[RawUpdate, NamedEvent, UniqueUser, UserOnline]):
+    def __write_generic(self, bucket: str, tags: List[str], obj: Union[RawUpdate, NamedEvent, UniqueUser]):
+        # UserOnline
         """
         Отправка произвольного события в InfluxDB
 
@@ -179,4 +186,4 @@ class InfluxAnalyticsClient(threading.Thread):
         self.__write_generic(bucket="user_online", tags=["online"], obj=event)
 
     def write_unique_user(self, unique_user: UniqueUser):
-        self.__write_generic(bucket="day_unique_user", tags=["unique_user"], obj=unique_user)
+        self.__write_generic(bucket="unique_user", tags=["channel"], obj=unique_user)
