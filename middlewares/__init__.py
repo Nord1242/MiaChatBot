@@ -9,7 +9,8 @@ from .check_ban import CheckUserBan
 from .check_user_time import CheckUserTime
 from .captcha import CheckCaptcha
 from .throttling import ThrottlingMiddleware
-from .cancle_dialog import CancelDialog
+from .after_command import CancelDialog
+
 
 from loader import dp
 from sqlalchemy.orm import sessionmaker

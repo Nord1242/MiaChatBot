@@ -2,7 +2,9 @@ from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, CallbackQuery, Message
 from typing import Any, Awaitable, Callable, Dict
 from aiogram_dialog import DialogManager, StartMode
+from aioredis.client import Redis
 
+from database.models import Users
 from states.all_state import ThemeDialogStates, RandomDialogStates
 
 
@@ -14,10 +16,16 @@ class CancelDialog(BaseMiddleware):
             event: Message or CallbackQuery,
             data: Dict[str, Any]
     ) -> Any:
+        user: Users = data['user']
         dialog_manager: DialogManager = data['dialog_manager']
         current_context = dialog_manager.current_context()
         commands = ['/random', '/menu', '/search', '/create', '/buysub']
         command = None
+        conn: Redis = data['redis_conn']
+        cat = await conn.hget("cat", key=str(user.telegram_user_id))
+        await conn.hdel("user_theme_top", str(user.telegram_user_id))
+        if cat:
+            await conn.hdel(cat.decode('utf-8'), str(user.telegram_user_id))
         if isinstance(event, Message):
             command = event.text
         if current_context and current_context.start_data and command in commands:
