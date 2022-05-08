@@ -52,7 +52,7 @@ class UserRepo(BaseSQLAlchemyRepo):
     async def set_time_ban(self, user_id: int, ban_info: str, ban_date: datetime, attempts: int):
         sql = update(self.model_user).where(self.model_user.telegram_user_id == user_id).values(time_ban=ban_date,
                                                                                                 ban_info=ban_info,
-                                                                                                attempts=attempts,)
+                                                                                                attempts=attempts, )
         await self._session.execute(sql)
         await self._session.commit()
 
@@ -73,6 +73,11 @@ class UserRepo(BaseSQLAlchemyRepo):
         await self._session.execute(sql)
         await self._session.commit()
 
+    async def set_gender(self, user_id: int, gender: str):
+        sql = update(self.model_user).where(self.model_user.telegram_user_id == user_id).values(gender=gender)
+        await self._session.execute(sql)
+        await self._session.commit()
+
     async def set_timeout(self, user_id: int):
         timeout_set = datetime.utcnow() + timedelta(hours=3.5)
         sql = update(self.model_user).where(self.model_user.telegram_user_id == user_id).values(timeout=timeout_set)
@@ -89,7 +94,6 @@ class UserRepo(BaseSQLAlchemyRepo):
                                                                                                 ban_info=None)
         await self._session.execute(sql)
         await self._session.commit()
-
 
     async def delete_ban(self, user_id: int, payment_id: int, product_id: str):
         success_pay = self.model_pay(payment_id=payment_id, user_id=user_id, product_id=product_id)

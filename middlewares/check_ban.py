@@ -1,10 +1,12 @@
 import datetime
+from pprint import pprint
 
 from repositories.repo import SQLAlchemyRepo
 from repositories.user_repo import UserRepo
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, CallbackQuery, Message
 from typing import Any, Awaitable, Callable, Dict
+from aiogram.types.update import Update
 from aiogram_dialog import DialogManager
 from database.models import Users
 from states.all_state import MenuStates, BuyStates
@@ -29,7 +31,6 @@ class CheckUserBan(BaseMiddleware):
             text = None
             current_context = dialog_manager.current_context()
             user_state = current_context.state if current_context else None
-            print(user_state)
             texts = ['/stop', '/start', '/menu']
             states = [MenuStates.ban_sub, BuyStates.buy_subscription, BuyStates.successful_payment]
             if isinstance(event, Message):

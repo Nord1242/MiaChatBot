@@ -37,6 +37,7 @@ class Users(Base):
     top = Column('top', Boolean, default=False)
     attempts = Column('attempts', Integer, default=6)
     ban_info = Column('ban_info', String, default=None)
+    gender = Column('gender', String, default=None)
 
 
 class Report(Base):

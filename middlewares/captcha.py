@@ -23,10 +23,7 @@ class CheckCaptcha(BaseMiddleware):
         now_date = datetime.utcnow()
         dialog_manager: DialogManager = data['dialog_manager']
         if user:
-            if user.is_human:
-                result = await handler(event, data)
-                return result
-            else:
+            if not user.is_human:
                 counter = None
                 context = dialog_manager.current_context()
                 if context:
@@ -34,3 +31,8 @@ class CheckCaptcha(BaseMiddleware):
                     if start_data:
                         counter = dialog_manager.current_context().start_data.get("counter")
                 await dialog_manager.start(state=MenuStates.captcha, data={"counter": counter})
+            elif not user.gender:
+                await dialog_manager.start(state=MenuStates.gender)
+            elif user.is_human:
+                result = await handler(event, data)
+                return result

@@ -2,8 +2,9 @@ import random
 import string
 import hashlib
 import urllib.parse
-
 import pyshorteners as pyshorteners
+
+from aioredis.client import Redis
 from database.models import Users
 from repositories.pay_repo import PayRepo
 from repositories.product_repo import ProductRepo
@@ -11,22 +12,13 @@ from typing import Any
 from aiogram_dialog import DialogManager, StartMode
 from states.all_state import MenuStates, BuyStates
 from loader import config
+from aiogram_dialog.widgets.kbd import ManagedRadioAdapter
 from aiogram.types import CallbackQuery
 from repositories.repo import SQLAlchemyRepo
 from repositories.product_repo import ProductRepo
 from aiogram_dialog.context.context import Context
 
 
-async def get_top(dialog_manager: DialogManager, **kwargs):
-    user: Users = dialog_manager.data.get('user')
-    repo: SQLAlchemyRepo = dialog_manager.data.get('repo')
-    products_repo: ProductRepo = repo.get_repo(ProductRepo)
-    product = await products_repo.get_product("top")
-    product_button = [(f"Вывести темы в топ на 24 часа - {int(product.amount)}₽", product.product_id)]
-    return {
-        "product_button": product_button,
-        "top": user.top
-    }
 
 
 async def get_subscriptions(dialog_manager: DialogManager, **kwargs):

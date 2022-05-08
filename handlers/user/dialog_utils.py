@@ -18,6 +18,7 @@ from aiogram_dialog import DialogManager, StartMode
 
 async def cancel_search(call: types.CallbackQuery, button: Button, dialog_manager: DialogManager):
     conn: Redis = dialog_manager.data.get('redis_conn')
+    cat = await conn.hget("cat", key=str(call.from_user.id))
     state = dialog_manager.current_context().state
     switch_state = None
     if state == RandomDialogStates.waiting_user:
@@ -25,7 +26,7 @@ async def cancel_search(call: types.CallbackQuery, button: Button, dialog_manage
         await conn.lrem('random_users', count=1, value=call.from_user.id)
     elif state == ThemeDialogStates.waiting_user_theme:
         switch_state = ThemeDialogStates.search_theme
-        await conn.hdel("user_theme", call.from_user.id)
+        await conn.hdel(cat.decode('utf-8'), call.from_user.id)
         await conn.hdel("user_theme_top", call.from_user.id)
     await conn.hdel('companion_state', call.from_user.id)
     print(switch_state.__str__())

@@ -12,13 +12,14 @@ class MenuStates(StatesGroup):
     captcha = State()
     main_menu = State()
     not_companion = State()
-
+    gender = State()
     ban_sub = State()
     ban = State()
     time_ban = State()
 
 
 class ThemeDialogStates(StatesGroup):
+    choose_cat = State()
     set_report = State()
     report = State()
     timeout = State()

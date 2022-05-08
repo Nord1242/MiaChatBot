@@ -36,7 +36,7 @@ async def connect_random_user(dialog_manager: DialogManager, user_id: int, compa
                                         "random_start": True})
 
 
-@dp.message(commands={'random'})
+# @dp.message(commands={'random'})
 async def search_random_user(call: types.CallbackQuery, widget: Any = None, dialog_manager: DialogManager = None):
     conn: Redis = dialog_manager.data.get('redis_conn')
     objects_queue = dialog_manager.data.get("objects_queue")

@@ -9,13 +9,20 @@ from aioredis.client import Redis
 from aiogram_dialog import ChatEvent, StartMode
 from aiogram_dialog.widgets.kbd import ManagedListGroupAdapter, ManagedCheckboxAdapter
 from aiogram import types
-from typing import Dict, Any
+from typing import Dict, Any, Union
 from datetime import datetime, timedelta
 from database.models import Users
 from states.all_state import ThemeDialogStates, BuyStates, MenuStates
 from loader import dp
-
+from aiogram.types.update import Update
 import random
+
+
+async def gender(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, user_gender: str):
+    repo: SQLAlchemyRepo = dialog_manager.data.get('repo')
+    user_repo: UserRepo = repo.get_repo(UserRepo)
+    await user_repo.set_gender(gender=user_gender, user_id=call.from_user.id)
+    await dialog_manager.start(MenuStates.main_menu)
 
 
 async def check_changed(event: ChatEvent, checkbox: ManagedCheckboxAdapter, manager: DialogManager):
@@ -92,7 +99,7 @@ async def check_captcha(call: types.CallbackQuery, widget: Any, dialog_manager: 
     correct_ball = dialog_manager.current_context().start_data.get("correct_ball")
     if correct_ball == ball:
         await user_repo.set_human(call.from_user.id)
-        await dialog_manager.start(MenuStates.main_menu, mode=StartMode.RESET_STACK)
+        await dialog_manager.start(MenuStates.gender)
     else:
         counter -= 1
         if counter == 0:
@@ -137,9 +144,14 @@ async def timeout(dialog_manager: DialogManager, **kwargs):
 
 async def check_top(event: ChatEvent, checkbox: ManagedCheckboxAdapter, dialog_manager: DialogManager):
     top = checkbox.is_checked()
-    dialog_manager.current_context().dialog_data.update(top=top)
     print(checkbox.is_checked())
     return top
+
+
+async def select_cat(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, cat: str):
+    conn: Redis = dialog_manager.data.get('redis_conn')
+    await conn.hset("cat", key=call.from_user.id, value=cat)
+    return True
 
 
 async def get_profile_data(dialog_manager: DialogManager, **kwargs):
@@ -162,16 +174,18 @@ async def get_profile_data(dialog_manager: DialogManager, **kwargs):
 
 
 @dp.message(commands={'create'})
-async def checks_restrictions(call: types.CallbackQuery, widget: Any = None, dialog_manager: DialogManager = None):
+async def checks_restrictions(event: Union[types.CallbackQuery, types.Message], widget: Any = None,
+                              dialog_manager: DialogManager = None):
     conn: Redis = dialog_manager.data.get('redis_conn')
     user: Users = dialog_manager.data.get('user')
-    user_id = call.from_user.id
+    user_id = event.from_user.id
+    cat = await conn.hget("cat", key=str(user_id))
     repo: SQLAlchemyRepo = dialog_manager.data.get('repo')
     user_repo: UserRepo = repo.get_repo(UserRepo)
     now = datetime.utcnow()
     count = await conn.hget(name="restrictions", key=user_id)
     timeout = user.timeout
-    state = ThemeDialogStates.write_theme
+    state = ThemeDialogStates.choose_cat
     if not user.product_date_end:
         if timeout:
             if now > user.timeout:
@@ -179,15 +193,18 @@ async def checks_restrictions(call: types.CallbackQuery, widget: Any = None, dia
             else:
                 state = ThemeDialogStates.timeout
         elif count:
-            if int(count) >= 5:
+            if int(count) >= 15:
                 await user_repo.set_timeout(user_id)
                 await conn.hset("restrictions", key=user_id, value=0)
                 state = ThemeDialogStates.timeout
+    if cat and isinstance(event, types.CallbackQuery):
+        state = ThemeDialogStates.write_theme
     await dialog_manager.start(state)
 
 
 def when_checked(data: Dict, widget, dialog_manager: DialogManager) -> bool:
     check: ManagedListGroupAdapter = dialog_manager.dialog().find("check")
+
     return check.is_checked()
 
 
@@ -217,3 +234,7 @@ def buy_sub(data: Dict, widget, dialog_manager: DialogManager):
         return True
     else:
         return False
+
+
+def get_button(data: Dict, widget, dialog_manager: DialogManager):
+    return list(data["themes_buttons"])
