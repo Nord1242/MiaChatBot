@@ -52,7 +52,7 @@ async def create_dialog(message: types.Message, dialog: Dialog, dialog_manager: 
     top_def: ManagedListGroupAdapter = dialog_manager.dialog().find("check_top")
     dialog_data = dialog_manager.current_context().dialog_data
     if user.top:
-        top = dialog_data.get("top") if dialog_data else top_def
+        top = dialog_data.get("top") if dialog_data else True
     else:
         top = None
     user_id = message.from_user.id
@@ -177,9 +177,42 @@ async def suggested_themes(dialog_manager: DialogManager, **kwargs):
     return {
         "themes_buttons": themes_buttons,
         "top_button": top_button,
-        "categories": categories
+        "categories": categories,
     }
 
+
+async def connect_users(conn: Redis, dialog_manager, companion_id: int, user_id: int):
+    pattern = r'XmaleX|XfemX'
+    repo: SQLAlchemyRepo = dialog_manager.data['repo']
+    user: Users = dialog_manager.data['user']
+    user_repo: UserRepo = repo.get_repo(UserRepo)
+    show_gender = {"male": "🚹", "fem": "🚺"}
+    companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
+    theme_name = await conn.hget("user_theme_top", str(companion_id))
+    await conn.hdel('user_theme_top', str(companion_id))
+    if not theme_name:
+        cat = await conn.hget("cat", key=companion_id)
+        theme_name = await conn.hget(cat.decode('utf-8'), str(companion_id))
+        await conn.hdel(cat.decode('utf-8'), str(companion_id))
+    theme_name = theme_name.decode('utf-8')
+    gender = re.search(pattern, theme_name).group()
+    theme_name = theme_name.replace(gender, '')
+    await conn.hset(name="companion_state", key=companion_id, value=ThemeDialogStates.in_dialog_theme.__str__())
+    text = f"Пользователь найден! 👀\n\nИмя темы: {theme_name}\n\nЧтобы завершить диалог, нажмите кнопку " \
+           f"ниже или воспользуйтесь командой: /stop"
+    companion: Users = await user_repo.get_user(companion_id)
+    if companion.product_date_end:
+        text = f"Пользователь найден! 👀\n\nИмя темы: {theme_name}\n\nПол пользователя: {show_gender[user.gender]}\n\nЧтобы завершить диалог, нажмите кнопку " \
+               "ниже или воспользуйтесь командой: /stop"
+    await companion_manager.start(ThemeDialogStates.in_dialog_theme, mode=StartMode.RESET_STACK,
+                                  data={'companion_id': user_id,
+                                        "text": text})
+    await dialog_manager.start(ThemeDialogStates.in_dialog_theme, mode=StartMode.NORMAL,
+                               data={"companion_id": companion_id,
+                                     "text": "Добро пожаловать в чат! 👀"
+                                             f"\n\nИмя темы: {theme_name}\n\n"
+                                             "Чтобы завершить диалог, нажмите кнопку ниже или воспользуйтесь"
+                                             " командой: /stop"})
 
 async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, companion_id: str):
     if companion_id == 'sad':
@@ -187,38 +220,16 @@ async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager:
     conn: Redis = dialog_manager.data.get('redis_conn')
     objects_queue = dialog_manager.data.get("objects_queue")
     objects_queue.put(NamedEventPre(event="Присоединение к диалогу"))
-    user: Users = dialog_manager.data['user']
     user_id = call.from_user.id
-    cat = await conn.hget("cat", key=companion_id)
     companion_id = int(companion_id)
     companion_state = (await conn.hget(name="companion_state", key=companion_id))
-    repo: SQLAlchemyRepo = dialog_manager.data['repo']
-    user_repo: UserRepo = repo.get_repo(UserRepo)
     if companion_id == user_id:
         await call.answer(show_alert=True, text="Вы не можете выбрать свою тему!!")
     elif not companion_state or companion_state.decode('utf-8') != ThemeDialogStates.waiting_user_theme.__str__():
         await call.answer(show_alert=True, text="Пользователь уже нашел собеседника!!")
     else:
-        conn: Redis = dialog_manager.data.get('redis_conn')
-        name = "user_theme_top"
-        companion_manager = dialog_manager.bg(user_id=companion_id, chat_id=companion_id)
-        await conn.hdel(cat.decode('utf-8'), str(companion_id))
-        await conn.hdel('user_theme_top', str(companion_id))
-        await conn.hset(name="companion_state", key=companion_id, value=ThemeDialogStates.in_dialog_theme.__str__())
-        text = "Пользователь найден! 👀\nЧтобы завершить диалог, нажмите кнопку ниже или воспользуйтесь командой: /stop"
-        companion: Users = await user_repo.get_user(companion_id)
-        if companion.product_date_end:
-            show_gender = {"male": "🚹", "fem": "🚺"}
-            text = f"Пользователь найден! 👀\n\nПол пользователя: {show_gender[user.gender]}\n\nЧтобы завершить диалог, нажмите кнопку " \
-                   "ниже или воспользуйтесь командой: /stop"
-        await companion_manager.start(ThemeDialogStates.in_dialog_theme, mode=StartMode.RESET_STACK,
-                                      data={'companion_id': user_id,
-                                            "text": text})
-        await dialog_manager.start(ThemeDialogStates.in_dialog_theme, mode=StartMode.NORMAL,
-                                   data={"companion_id": companion_id,
-                                         "text": "Добро пожаловать в чат! 👀"
-                                                 "Чтобы завершить диалог, нажмите кнопку ниже или воспользуйтесь"
-                                                 " командой: /stop"})
+        await connect_users(conn, dialog_manager, companion_id, user_id)
+
 
 
 async def text_join_in_dialog(dialog_manager: DialogManager, **kwargs):

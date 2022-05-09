@@ -144,7 +144,7 @@ async def timeout(dialog_manager: DialogManager, **kwargs):
 
 async def check_top(event: ChatEvent, checkbox: ManagedCheckboxAdapter, dialog_manager: DialogManager):
     top = checkbox.is_checked()
-    print(checkbox.is_checked())
+    dialog_manager.current_context().dialog_data.update(top=top)
     return top
 
 
