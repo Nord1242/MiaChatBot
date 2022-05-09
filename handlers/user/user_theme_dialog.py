@@ -178,6 +178,7 @@ async def suggested_themes(dialog_manager: DialogManager, **kwargs):
         "themes_buttons": themes_buttons,
         "top_button": top_button,
         "categories": categories,
+        "product_date_end": user.product_date_end
     }
 
 
