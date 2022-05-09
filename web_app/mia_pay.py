@@ -8,7 +8,6 @@ import hashlib
 import aiohttp_jinja2
 import string
 
-
 from datetime import datetime, timedelta
 from typing import Any
 from utils.analytics import UniqueUserPre
@@ -27,28 +26,24 @@ from states.all_state import BuyStates
 from database.models import Pay
 
 
-async def check_pay(payment_id):
-    async with aiohttp.ClientSession() as session:
-        async with session.post('https://payok.io/api/transaction', data={"API_ID": config.buy.api_id,
-                                                                          "API_KEY": config.buy.api_key,
-                                                                          "shop": config.buy.project_id,
-                                                                          "payment": payment_id}) as rest:
-            answer = await rest.json(content_type=None)
-            print(answer)
-            status = answer['status']
-            return status
+# async def check_pay(payment_id):
+#     async with aiohttp.ClientSession() as session:
+#         async with session.post('https://payok.io/api/transaction', data={"API_ID": config.buy.api_id,
+#                                                                           "API_KEY": config.buy.api_key,
+#                                                                           "shop": config.buy.project_id,
+#                                                                           "payment": payment_id}) as rest:
+#             answer = await rest.json(content_type=None)
+#             print(answer)
+#             status = answer['status']
+#             return status
 
 
-async def check_sing(pay_object, payment_id, data):
+async def check_sing(pay_object, data):
     if pay_object:
-        amount = int(pay_object.product_data["amount"])
-        sing_data = [config.buy.secret_key, pay_object.product_data['desc'], data['currency'], data['shop'],
-                     data['payment_id'], amount]
-        print(sing_data)
-        sign = hashlib.md5("|".join(map(str, sing_data)).encode('utf-8')).hexdigest()
-        print("|".join(map(str, sing_data)))
-        print(sign, data['sign'])
+        sing_data = [data['merchant_id'], data['amount'], data['pay_id'], config.buy.secret_key]
+        sign = hashlib.md5(":".join(map(str, sing_data)).encode('utf-8')).hexdigest()
         if data['sign'] == sign:
+            print('True')
             return True
     return False
 
@@ -89,23 +84,18 @@ async def buy(request: Request):
     raise web.HTTPFound(config.buy.url + str_params)
 
 
-@extra_router.post('/notification')
+@extra_router.get('/notification')
 async def notification(request: Request):
-    print('sssss')
-    pattern = r'(\w+)=(\w+)'
-    request_body_str = (await request.read()).decode('utf-8')
-    data = {data[0]: data[1] for data in re.findall(pattern, request_body_str)}
-    payment_id = int(data['payment_id'])
-    print(data['sign'])
+    pay_data = request.rel_url.query
+    payment_id = int(pay_data['pay_id'])
     success_repo: SuccessPayRepo = await get_repo(SuccessPayRepo)
     pay_repo: PayRepo = await get_repo(PayRepo)
     pay_object: Pay = await pay_repo.get_pay(payment_id=payment_id)
-    if await check_sing(pay_object, payment_id, data):
+    if await check_sing(pay_object, pay_data):
         chat_data = pay_object.user_data["chat"]
         from_user = pay_object.user_data["from_user"]
         product_id = pay_object.product_data["product_id"]
-        status = await check_pay(payment_id)
-        if status == 'success':
+        if pay_data['status'] == 'paid':
             print('suc')
             await set_product(user_id=from_user["id"], day_sub=pay_object.product_data['days'],
                               payment_id=payment_id, product_id=product_id)
