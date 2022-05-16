@@ -1,7 +1,7 @@
 from aiogram_dialog import DialogManager
 import math
 import re
-
+from aiogram_dialog.widgets.kbd import ManagedRadioAdapter
 from repositories.product_repo import ProductRepo
 from repositories.repo import SQLAlchemyRepo
 from repositories.user_repo import UserRepo
@@ -150,44 +150,74 @@ async def check_top(event: ChatEvent, checkbox: ManagedCheckboxAdapter, dialog_m
 
 async def select_cat(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager, cat: str):
     conn: Redis = dialog_manager.data.get('redis_conn')
-    await conn.hset("cat", key=call.from_user.id, value=cat)
+    await conn.hset(f"{call.from_user.id}_data", key="cat", value=cat)
+    return True
+
+
+async def select_search_gender(call: types.CallbackQuery, widget: Any, dialog_manager: DialogManager,
+                               search_gender: str):
+    conn: Redis = dialog_manager.data.get('redis_conn')
+    await conn.hset(f"{call.from_user.id}_data", key="search_gender", value=search_gender)
     return True
 
 
 async def get_profile_data(dialog_manager: DialogManager, **kwargs):
-    product_date_end, first_name = None, None
-    user_profile = dialog_manager.data.get('user')
+    show_gender = {"male": "🚹", "fem": "🚺"}
+    conn: Redis = dialog_manager.data.get('redis_conn')
+    user_profile: Users = dialog_manager.data.get('user')
     user = dialog_manager.data.get('event_from_user')
     repo: SQLAlchemyRepo = dialog_manager.data.get('repo')
     user_repo: UserRepo = repo.get_repo(UserRepo)
     if user_profile:
         first_name = user_profile.first_name
         product_date_end = user_profile.product_date_end
+        companion_gender = await conn.hget(f'{user_profile.telegram_user_id}_data', "search_gender")
     else:
         user_data: Users = await user_repo.get_user(user_id=user.id)
         first_name = user_data.first_name
         product_date_end = user_data.product_date_end
+        companion_gender = await conn.hget(f'{user_data.telegram_user_id}_data', "search_gender")
+    if companion_gender:
+        companion_gender = companion_gender.decode('utf-8')
+        companion_gender = show_gender[companion_gender]
+    else:
+        companion_gender = "❌"
     return {
+        "companion_gender": companion_gender,
         "login": first_name,
         "sub": product_date_end
     }
 
 
+async def get_search_gender(dialog_manager: DialogManager, **kwargs):
+    event = dialog_manager.data['event_chat']
+    user: Users = dialog_manager.data.get('user')
+    conn: Redis = dialog_manager.data.get('redis_conn')
+    search_gender = await conn.hget(f'{user.telegram_user_id}_data', "search_gender")
+    radio: ManagedRadioAdapter = dialog_manager.dialog().find('get_menu_gender')
+    await radio.set_checked(item_id=search_gender.decode('utf-8'), event=event)
+
+
 @dp.message(commands={'create'})
 async def checks_restrictions(event: Union[types.CallbackQuery, types.Message], widget: Any = None,
                               dialog_manager: DialogManager = None):
+    count = None
+    cat = None
     conn: Redis = dialog_manager.data.get('redis_conn')
     user: Users = dialog_manager.data.get('user')
     user_id = event.from_user.id
-    cat = await conn.hget("cat", key=str(user_id))
+    user_data = await conn.hgetall(f"{user_id}_data")
+    if b'restrictions' in user_data:
+        count = user_data[b'restrictions']
+    if b'cat' in user_data:
+        cat = user_data[b'cat']
     repo: SQLAlchemyRepo = dialog_manager.data.get('repo')
     user_repo: UserRepo = repo.get_repo(UserRepo)
     now = datetime.utcnow()
-    count = await conn.hget(name="restrictions", key=user_id)
-    timeout = user.timeout
+    user_timeout = user.timeout
     state = ThemeDialogStates.choose_cat
     if not user.product_date_end:
-        if timeout:
+        if user_timeout:
             if now > user.timeout:
                 await user_repo.delete_timeout(user_id)
             else:
@@ -195,8 +225,10 @@ async def checks_restrictions(event: Union[types.CallbackQuery, types.Message], 
         elif count:
             if int(count) >= 15:
                 await user_repo.set_timeout(user_id)
-                await conn.hset("restrictions", key=user_id, value=0)
+                await conn.hset(f"{user_id}_data", key="restrictions", value=0)
                 state = ThemeDialogStates.timeout
+        await dialog_manager.start(state)
+        return
     if cat and isinstance(event, types.CallbackQuery):
         state = ThemeDialogStates.write_theme
     await dialog_manager.start(state)
@@ -216,6 +248,7 @@ async def get_sub_data(dialog_manager: DialogManager, **kwargs):
                 f'- отсутствует ограничение на количество создаваемых тем;\n'
                 f'- сокращение шанса словить бан в нашей системе;\n'
                 f'- под темой и во время диалога, будет показан пол пользователя\n🚹🚺\n'
+                f'- доступен поиск случайного собеседника по полу'
                 f'- в случае бана вашего аккаунта, есть возможность разбана.\n\n'
                 f'⚠️ На подписку не распространяется:\n'
                 f'└ продвижение вашей темы в топ;\n'

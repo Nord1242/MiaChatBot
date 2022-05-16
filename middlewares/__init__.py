@@ -10,7 +10,7 @@ from .check_user_time import CheckUserTime
 from .captcha import CheckCaptcha
 from .throttling import ThrottlingMiddleware
 from .after_command import CancelDialog
-
+from .set_expire import SetExpire
 
 from loader import dp
 from sqlalchemy.orm import sessionmaker
@@ -30,6 +30,7 @@ async def setup_middleware(sm: sessionmaker, rc: Redis):
     dp.message.middleware(SetUserBan())
     dp.message.middleware(ThrottlingMiddleware())
     dp.message.middleware(CancelDialog())
+    dp.message.middleware(SetExpire())
 
     dp.callback_query.middleware(GetConnectionToRedis(rc))
     dp.callback_query.middleware(GetConnectionToDB(sm))
@@ -41,5 +42,6 @@ async def setup_middleware(sm: sessionmaker, rc: Redis):
     dp.callback_query.middleware(LogUpdatesMiddleware())
     dp.callback_query.middleware(OnlineMiddleware())
     dp.callback_query.middleware(ThrottlingMiddleware())
+    dp.callback_query.middleware(SetExpire())
 
 

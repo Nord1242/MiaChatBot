@@ -7,6 +7,7 @@ from aiogram.types import TelegramObject
 from utils.analytics import UserOnlinePre
 from aiogram_dialog import DialogManager
 
+
 class OnlineMiddleware(BaseMiddleware):
 
     async def __call__(

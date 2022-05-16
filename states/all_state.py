@@ -32,6 +32,8 @@ class ThemeDialogStates(StatesGroup):
 
 
 class RandomDialogStates(StatesGroup):
+    get_gender = State()
+    get_menu_gender = State()
     set_report = State()
     report = State()
     report = State()

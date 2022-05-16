@@ -17,13 +17,14 @@ from aiogram_dialog import DialogManager, StartMode
 
 
 async def cancel_search(call: types.CallbackQuery, button: Button, dialog_manager: DialogManager):
+    user: Users = dialog_manager.data.get('user')
     conn: Redis = dialog_manager.data.get('redis_conn')
-    cat = await conn.hget("cat", key=str(call.from_user.id))
+    cat = await conn.hget(f"{call.from_user.id}_data", key="cat")
     state = dialog_manager.current_context().state
     switch_state = None
     if state == RandomDialogStates.waiting_user:
         switch_state = MenuStates.main_menu
-        await conn.lrem('random_users', count=1, value=call.from_user.id)
+        await conn.lrem(f'{user.gender}_random_users', count=1, value=call.from_user.id)
     elif state == ThemeDialogStates.waiting_user_theme:
         switch_state = ThemeDialogStates.search_theme
         await conn.hdel(cat.decode('utf-8'), call.from_user.id)
@@ -60,7 +61,8 @@ async def return_to_cancel_window(dialog_manager: DialogManager, companion_id: i
     await dialog_manager.start(state, mode=StartMode.RESET_STACK,
                                data={"text": "😔 Вы завершили диалог", "companion_id": companion_id})
     await companion_manager.start(state, mode=StartMode.RESET_STACK,
-                                  data={"text": "😔 Собеседник завершил диалог", "companion_id": user_id})
+                                  data={"text": "😔 Собеседник завершил диалог", "companion_id": user_id,
+                                        "user_id": companion_id})
 
 
 @dp.message(commands={'stop'})

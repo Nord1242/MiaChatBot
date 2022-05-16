@@ -22,6 +22,7 @@ class CancelDialog(BaseMiddleware):
         commands = ['/random', '/menu', '/search', '/create', '/buysub']
         command = None
         conn: Redis = data['redis_conn']
+        await conn.lrem(f'{user.gender}_random_users', count=1, value=user.telegram_user_id)
         cat = await conn.hget("cat", key=str(user.telegram_user_id))
         await conn.hdel("user_theme_top", str(user.telegram_user_id))
         if cat:
