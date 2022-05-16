@@ -209,7 +209,7 @@ dialog_theme_window = Dialog(
                     item_id_getter=operator.itemgetter(1),
                     items="themes_buttons",
                     on_click=join_in_dialog,
-                ), width=2, number_of_characters=16),
+                ), width=2, number_of_characters=19),
             Button(Const('Будь первым кто предложит свою тему 🥳'), id='them', on_click=checks_restrictions,
                    when=lambda data, w, m: not data["themes_buttons"]),
             id="themes_menu",
@@ -248,10 +248,8 @@ dialog_theme_window = Dialog(
         Const("Введите название темы 📝 "),
         Row(
             Checkbox(
-                Const("✅ Выдвинуть тему в топ 💎"),
-                Const("❌ Выдвинуть тему в топ 💎"),
                 id="check_top",
-                default=True,
+                default=False,
                 on_state_changed=check_top,
             ), when=lambda data, w, m: data['top'] is True),
         Select(
