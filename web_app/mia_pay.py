@@ -1,16 +1,10 @@
-import base64
-import urllib.parse
-import urllib.parse
-import aiohttp
-import random
-import re
-import hashlib
-import aiohttp_jinja2
-import string
 
-from datetime import datetime, timedelta
+import urllib.parse
+import urllib.parse
+import hashlib
+
 from typing import Any
-from utils.analytics import UniqueUserPre
+from utils.analytics import UniqueUserChannelPre
 from aiohttp import web
 from loader import config, extra_router, bot, registry, objects_queue
 from repositories.pay_repo import PayRepo
@@ -73,7 +67,7 @@ async def home(request: Request):
     params = request.rel_url.query
     if params:
         channel = params['channel']
-        objects_queue.put(UniqueUserPre(channel=channel))
+        objects_queue.put(UniqueUserChannelPre(channel=channel))
     raise web.HTTPFound("https://t.me/MiaAnonimChatBot")
 
 

@@ -248,6 +248,8 @@ dialog_theme_window = Dialog(
         Const("Введите название темы 📝 "),
         Row(
             Checkbox(
+                Const("✅ Выдвинуть тему в топ 💎"),
+                Const("❌ Выдвинуть тему в топ 💎"),
                 id="check_top",
                 default=False,
                 on_state_changed=check_top,

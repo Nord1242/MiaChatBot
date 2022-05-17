@@ -13,7 +13,8 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 # "сырые" объекты, которые прилетают из хэндлеров или мидлварей
 RawUpdatePre = namedtuple("RawUpdatePre", ["is_handled"])
 NamedEventPre = namedtuple("NamedEventPre", ["event"])
-UniqueUserPre = namedtuple("UniqueUserPre", ["channel"])
+UniqueUserChannelPre = namedtuple("UniqueUserPre", ["channel"])
+UniqueUserPre = namedtuple("UniqueUserPre", [])
 UserOnlinePre = namedtuple("UserOnlinePre", ["user_id"])
 
 
@@ -42,6 +43,12 @@ class UserOnline:
 
 @dataclass
 class UniqueUser:
+    timestamp: datetime
+    updates_in_batch: int
+
+
+@dataclass
+class UniqueUserChannel:
     channel: str
     timestamp: datetime
     updates_in_batch: int
@@ -75,7 +82,8 @@ class InfluxAnalyticsClient(threading.Thread):
         """
         users_list = {}
         named_events = {}
-        unique_user = {}
+        unique_user_channel = {}
+        unique_user_count = 0
 
         next_day = datetime.utcnow() + timedelta(days=1)
         next_day = datetime.combine(next_day, time.min)
@@ -96,14 +104,16 @@ class InfluxAnalyticsClient(threading.Thread):
                     elif isinstance(new_object, NamedEventPre):
                         named_events.setdefault(new_object.event, 0)
                         named_events[new_object.event] += 1
-                    elif isinstance(new_object, UniqueUserPre):
-                        unique_user.setdefault(new_object.channel, 0)
-                        unique_user[new_object.channel] += 1
+                    elif isinstance(new_object, UniqueUserChannelPre):
+                        unique_user_channel.setdefault(new_object.channel, 0)
+                        unique_user_channel[new_object.channel] += 1
                     elif isinstance(new_object, UserOnlinePre):
                         if new_object.user_id not in users_list:
                             users_list.setdefault(new_object.user_id, datetime.utcnow() + timedelta(minutes=30))
                         else:
                             users_list[new_object.user_id] = datetime.utcnow() + timedelta(minutes=30)
+                    elif isinstance(new_object, UniqueUserPre):
+                        unique_user_count += 1
 
                 except Empty:
                     # Наличие N элементов в очереди не гарантирует, что все N можно забрать
@@ -125,11 +135,17 @@ class InfluxAnalyticsClient(threading.Thread):
                 )
             )
             # Отправка уникальных пользователей с канала
-            for channel, users in unique_user.items():
-                self.write_unique_user(UniqueUser(
+            for channel, users in unique_user_channel.items():
+                self.write_unique_user_channel(UniqueUserChannel(
                     timestamp=datetime.utcnow(),
                     channel=channel,
                     updates_in_batch=users
+                ))
+            # Отправка уникальных пользователей
+            self.write_unique_user(
+                UniqueUser(
+                    timestamp=datetime.utcnow(),
+                    updates_in_batch=unique_user_count
                 ))
             # Отправка именованных событий
             for key, value in named_events.items():
@@ -144,8 +160,9 @@ class InfluxAnalyticsClient(threading.Thread):
                 named_events[key] = 0
             # Сбор онлайна
             if datetime.utcnow() >= next_day:
-                for channel, users in unique_user.items():
-                    unique_user[channel] = 0
+                for channel, users in unique_user_channel.items():
+                    unique_user_channel[channel] = 0
+                unique_user_count = 0
                 next_day = datetime.utcnow() + timedelta(days=1)
                 next_day = datetime.combine(next_day, time.min)
             # for user_id, time in users_list.items():
@@ -157,7 +174,8 @@ class InfluxAnalyticsClient(threading.Thread):
             sleep(3)
         print("InfluxAnalyticsClient stopped")
 
-    def __write_generic(self, bucket: str, tags: List[str], obj: Union[RawUpdate, NamedEvent, UniqueUser]):
+    def __write_generic(self, bucket: str, tags: List[str],
+                        obj: Union[RawUpdate, NamedEvent, UniqueUserChannel, UserOnline, UniqueUser]):
         # UserOnline
         """
         Отправка произвольного события в InfluxDB
@@ -185,5 +203,8 @@ class InfluxAnalyticsClient(threading.Thread):
     def write_user_online(self, event: UserOnline):
         self.__write_generic(bucket="user_online", tags=["online"], obj=event)
 
+    def write_unique_user_channel(self, unique_user_channel: UniqueUserChannel):
+        self.__write_generic(bucket="unique_user_channel", tags=["channel"], obj=unique_user_channel)
+
     def write_unique_user(self, unique_user: UniqueUser):
-        self.__write_generic(bucket="unique_user", tags=["channel"], obj=unique_user)
+        self.__write_generic(bucket="unique_user", tags=["unique_users"], obj=unique_user)

@@ -3,7 +3,7 @@ from repositories.user_repo import UserRepo
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, CallbackQuery, Message
 from typing import Any, Awaitable, Callable, Dict
-from utils.analytics import UniqueUserPre
+from utils.analytics import UniqueUserChannelPre
 from queue import Queue
 from database.models import Users
 from aiogram_dialog import DialogManager

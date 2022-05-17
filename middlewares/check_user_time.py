@@ -4,7 +4,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, CallbackQuery, Message
 from typing import Any, Awaitable, Callable, Dict
 from datetime import datetime
-from utils.analytics import UniqueUserPre
+from utils.analytics import UniqueUserChannelPre
 from queue import Queue
 from database.models import Users
 
