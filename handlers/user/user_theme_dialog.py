@@ -76,7 +76,7 @@ async def create_dialog(message: types.Message, dialog: Dialog, dialog_manager: 
             name = cat.decode('utf-8')
         await conn.hset(name, key=user_id, value=f"{theme_name} X{user.gender}X")
         await dialog.next()
-        await conn.hset(f"{message.from_user.id}_data", key=user_id,
+        await conn.hset(f"{message.from_user.id}_data", key="state",
                         value=ThemeDialogStates.waiting_user_theme.__str__())
     else:
         await message.answer(text="❗️ Максимальная длина темы 36 символов ❗️")
@@ -194,7 +194,7 @@ async def connect_users(conn: Redis, dialog_manager, companion_id: int, user_id:
     theme_name = await conn.hget("user_theme_top", str(companion_id))
     await conn.hdel('user_theme_top', str(companion_id))
     if not theme_name:
-        cat = await conn.hget("cat", key=companion_id)
+        cat = await conn.hget(f"{companion_id}_data", key="cat")
         theme_name = await conn.hget(cat.decode('utf-8'), str(companion_id))
         await conn.hdel(cat.decode('utf-8'), str(companion_id))
     theme_name = theme_name.decode('utf-8')

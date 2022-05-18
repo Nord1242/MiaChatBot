@@ -29,7 +29,7 @@ async def cancel_search(call: types.CallbackQuery, button: Button, dialog_manage
         switch_state = ThemeDialogStates.search_theme
         await conn.hdel(cat.decode('utf-8'), call.from_user.id)
         await conn.hdel("user_theme_top", call.from_user.id)
-    await conn.hdel('companion_state', call.from_user.id)
+    await conn.hdel(f"{call.from_user.id}_data", 'state')
     print(switch_state.__str__())
     await dialog_manager.start(state=switch_state)
 
@@ -73,8 +73,8 @@ async def cancel_dialog(call: types.CallbackQuery, widget: Any = None, dialog_ma
     if state == RandomDialogStates.in_dialog or state == ThemeDialogStates.in_dialog_theme:
         start_data = dialog_manager.current_context().start_data
         companion_id = start_data.get("companion_id")
-        await conn.hdel('companion_state', str(companion_id))
-        await conn.hdel('companion_state', str(call.from_user.id))
+        await conn.hdel(f'{companion_id}_data', 'state')
+        await conn.hdel(f'{call.from_user.id}_data', 'state')
         user_id = call.from_user.id
         await return_to_cancel_window(dialog_manager, companion_id, user_id)
     else:

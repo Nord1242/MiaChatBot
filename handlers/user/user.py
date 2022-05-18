@@ -216,6 +216,8 @@ async def checks_restrictions(event: Union[types.CallbackQuery, types.Message], 
     now = datetime.utcnow()
     user_timeout = user.timeout
     state = ThemeDialogStates.choose_cat
+    if cat and isinstance(event, types.CallbackQuery):
+        state = ThemeDialogStates.write_theme
     if not user.product_date_end:
         if user_timeout:
             if now > user.timeout:
@@ -227,10 +229,6 @@ async def checks_restrictions(event: Union[types.CallbackQuery, types.Message], 
                 await user_repo.set_timeout(user_id)
                 await conn.hset(f"{user_id}_data", key="restrictions", value=0)
                 state = ThemeDialogStates.timeout
-        await dialog_manager.start(state)
-        return
-    if cat and isinstance(event, types.CallbackQuery):
-        state = ThemeDialogStates.write_theme
     await dialog_manager.start(state)
 
 
