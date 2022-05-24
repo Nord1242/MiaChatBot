@@ -23,10 +23,10 @@ class CancelDialog(BaseMiddleware):
         command = None
         conn: Redis = data['redis_conn']
         await conn.lrem(f'{user.gender}_random_users', count=1, value=user.telegram_user_id)
-        cat = await conn.hget("cat", key=str(user.telegram_user_id))
         await conn.hdel("user_theme_top", str(user.telegram_user_id))
-        if cat:
-            await conn.hdel(cat.decode('utf-8'), str(user.telegram_user_id))
+        await conn.hdel('adult', str(user.telegram_user_id))
+        await conn.hdel('dating', str(user.telegram_user_id))
+        await conn.hdel('commun', str(user.telegram_user_id))
         if isinstance(event, Message):
             command = event.text
         if current_context and current_context.start_data and command in commands:

@@ -18,5 +18,5 @@ class SetExpire(BaseMiddleware):
         result = await handler(event, data)
         user: Users = data['user']
         conn: Redis = data['redis_conn']
-        await conn.expire(f"{user.telegram_user_id}_data", 172800)
+        await conn.expire(f"{user.telegram_user_id}_data", 604800)
 

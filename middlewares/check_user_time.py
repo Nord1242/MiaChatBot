@@ -7,7 +7,7 @@ from datetime import datetime
 from utils.analytics import UniqueUserChannelPre
 from queue import Queue
 from database.models import Users
-
+from aioredis.client import Redis
 
 class CheckUserTime(BaseMiddleware):
 
@@ -20,13 +20,17 @@ class CheckUserTime(BaseMiddleware):
         repo: SQLAlchemyRepo = data['repo']
         user_repo: UserRepo = repo.get_repo(UserRepo)
         user: Users = data['user']
+        conn: Redis = data['redis_conn']
         time_ban = user.time_ban
         now_date = datetime.utcnow()
         if user:
             if user.product_date_end:
                 if now_date > user.product_date_end:
                     await user_repo.delete_sub(user.telegram_user_id)
+                    await conn.hdel(f"{user.telegram_user_id}_data", "sub")
+                    await conn.hdel(f"{user.telegram_user_id}_data", "search_gender")
                     user.product_date_end = None
+
             if user.top_date_end:
                 if now_date > user.top_date_end:
                     await user_repo.delete_top(user_id=user.telegram_user_id)

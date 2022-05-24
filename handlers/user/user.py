@@ -195,7 +195,8 @@ async def get_search_gender(dialog_manager: DialogManager, **kwargs):
     conn: Redis = dialog_manager.data.get('redis_conn')
     search_gender = await conn.hget(f'{user.telegram_user_id}_data', "search_gender")
     radio: ManagedRadioAdapter = dialog_manager.dialog().find('get_menu_gender')
-    await radio.set_checked(item_id=search_gender.decode('utf-8'), event=event)
+    if search_gender:
+        await radio.set_checked(item_id=search_gender.decode('utf-8'), event=event)
 
 
 @dp.message(commands={'create'})

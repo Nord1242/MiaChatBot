@@ -27,7 +27,8 @@ async def cancel_search(call: types.CallbackQuery, button: Button, dialog_manage
         await conn.lrem(f'{user.gender}_random_users', count=1, value=call.from_user.id)
     elif state == ThemeDialogStates.waiting_user_theme:
         switch_state = ThemeDialogStates.search_theme
-        await conn.hdel(cat.decode('utf-8'), call.from_user.id)
+        if cat:
+            await conn.hdel(cat.decode('utf-8'), call.from_user.id)
         await conn.hdel("user_theme_top", call.from_user.id)
     await conn.hdel(f"{call.from_user.id}_data", 'state')
     print(switch_state.__str__())

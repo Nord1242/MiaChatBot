@@ -226,10 +226,16 @@ async def join_in_dialog(call: types.CallbackQuery, widget: Any, dialog_manager:
     objects_queue.put(NamedEventPre(event="Присоединение к диалогу"))
     user_id = call.from_user.id
     companion_id = int(companion_id)
+    cat = await conn.hget(f"{companion_id}_data", key="cat")
     companion_state = await conn.hget(name=f"{companion_id}_data", key="state")
     if companion_id == user_id:
         await call.answer(show_alert=True, text="Вы не можете выбрать свою тему!!")
-    elif not companion_state or companion_state.decode('utf-8') != ThemeDialogStates.waiting_user_theme.__str__():
+    if not companion_state:
+        await conn.hdel('commun', str(companion_id))
+        await conn.hdel('adult', str(companion_id))
+        await conn.hdel('dating', str(companion_id))
+        await call.answer(show_alert=True, text="Пользователь уже не ищет собеседника!!")
+    elif companion_state.decode('utf-8') != ThemeDialogStates.waiting_user_theme.__str__():
         await call.answer(show_alert=True, text="Пользователь уже нашел собеседника!!")
     else:
         await connect_users(conn, dialog_manager, companion_id, user_id)
